@@ -111,14 +111,7 @@ original, y procede a llamarse a la funcion  actualizarMatriz.
                                    matrizRespaldo
                                    (cdr matriz)
                                    (append matrizNueva (list(car matriz)))
-                                   elemento
-              )
-              (actualizarMatriz matrizRespaldo matrizNueva mPosicion nPosicion elemento)   
-          )
-      )
-  )   
-)
-
+                                   elemento)(actualizarMatriz matrizRespaldo matrizNueva mPosicion nPosicion elemento)))))
 #|
 Funcion auxiliar que se encarga de colocar las fichas en la columna especifica, encontrada a partir de la funcion anterior. Recibe como
 parametros a la posicion dentro de la fila a donde se quiere colocar la ficha, un contador que facilite el recorrido dentro de la fila,
