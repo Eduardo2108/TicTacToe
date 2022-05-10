@@ -58,6 +58,43 @@ newValue: new value to replace the old one.
       )
   )
 
+#|
+Method for changing the value of an element in a matrix
+
+params:
+line, columns: ubication of the element.
+value: new value of the entry|#
+
+(define (replace_value_matrix newValue line column matrix)
+  (if (and (<= line (length matrix)) (<= column (length(car matrix))))
+      
+      (replace_m_aux newValue line column matrix '() 1)
+      
+      #f
+
+      )
+  )
+
+(define (replace_m_aux newValue line column matrix newMatrix current_line)
+  (if (equal? current_line line)
+      (replace_m_aux newValue
+                     line
+                     column
+                     (cdr matrix)
+                     (append newMatrix (list(replace newValue (car matrix) column)))
+                     (+ 1 current_line))
+     
+       (if (not (null? matrix))
+           (replace_m_aux newValue
+                          line
+                          column
+                          (cdr matrix)
+                          (append newMatrix (list(car matrix)))
+                          (+ 1 current_line))
+      newMatrix
+       )
+   )
+  )
 
 
 
@@ -67,5 +104,9 @@ newValue: new value to replace the old one.
 
 
 
+
+
+
+                                          
 
 
