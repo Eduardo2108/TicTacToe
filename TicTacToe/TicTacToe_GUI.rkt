@@ -1,10 +1,7 @@
-;; The first three lines of this file were inserted by DrRacket. They record metadata
-;; about the language level of this file in a form that our tools can easily process.
-#reader(lib "htdp-advanced-reader.ss" "lang")((modname TicTacToe_GUI) (read-case-sensitive #t) (teachpacks ()) (htdp-settings #(#t constructor repeating-decimal #t #t none #f () #f)))
 ;;TicTacToe GUI
 ;;Desarrollado por: Jose Espinoza, Eduardo Zumbado
 ;;Tarea 1 - CE3104 - Lenguajes, Compiladores e Interpretes
-
+#lang racket
 (require graphics/graphics)
 (require racket/draw)
 (open-graphics)
@@ -15,9 +12,9 @@
 ;;--------------Initial GUI values and image loading------------------------------------------------------------------
 
 ;;Lenght for the GUI window
-(define lngth 800)
+(define lngth 1100)
 ;;Width for the GUI window
-(define wdth 800)
+(define wdth 700)
 
 ;;Creates the window
 (define window (open-viewport "TicTacToe" wdth lngth))
@@ -42,8 +39,8 @@
 ;;Restrictions: Must be integers
 (define(drawLines m n)
   (cond ((and (>= m 3) (<= m 10) (>= n 3) (<= n 10))
-      ((drawRows (- n 1) m)
-      (drawColumns (- m 1) n)))
+      (drawRows (- n 1) m)
+      (drawColumns (- m 1) n))
         (else
          #f)))
 ;;Function that draws the rows of the matrix
@@ -54,8 +51,8 @@
   (cond ((equal? m 0)
          #t)
         (else
-         (((draw-solid-rectangle hidden-window) (make-posn 100 (+ (* m 65) 10)) (* lngth 65) 4  "red")
-         (drawRows (- m 1) lngth)))))
+         ((draw-solid-rectangle hidden-window) (make-posn 100 (+ (* m 65) 10)) (* lngth 65) 4  "red")
+         (drawRows (- m 1) lngth))))
 ;;Function that draws the columns of the matrix
 ;;Receives: n (integer for columns, column quantity) and lngth (states the length for the line to be drawn)
 ;;Returns: Graphical lines for the columns
@@ -63,8 +60,8 @@
 (define (drawColumns n lngth)
   (cond ((equal? n 0) #t)
         (else
-         (((draw-solid-rectangle hidden-window) (make-posn (+ (* n 65) 100) 10) 4 (* lngth 65) "red")
-         (drawColumns (- n 1) lngth)))))
+         ((draw-solid-rectangle hidden-window) (make-posn (+ (* n 65) 100) 10) 4 (* lngth 65) "red")
+         (drawColumns (- n 1) lngth))))
 
 ;;-------------------Drawing of X and O symbols-----------------------------------------------------------------
 
@@ -92,10 +89,10 @@
   (let* ((click (get-mouse-click window))
          (x (posn-x (query-mouse-posn window)))
          (y (posn-y (query-mouse-posn window))))
-  (cond (((equal? (left-mouse-click? click)
-         (mouseClick m n (append list (verificarDibujoX x y m n list))  )))
+  (cond ((equal? (left-mouse-click? click)
+         (mouseClick m n (append list (tileCheck x y m n list)) )))
   (else
-   (mouseClick m n lista ))))))
+   (mouseClick m n list )))))
 ;; Function that provides a value of row depending on the y coordinates
 ;; Receives: y (position on y provided by mouse function)
 ;; Returns: value of row
@@ -148,19 +145,163 @@
          '(10))
         (else
          (list x))))
+;;Function that verifies if the selected tile is available to draw a X on it.
+;;Receives: x (x coordinate in pixels), y  (y coordinate in pixels), m (size of the rows), n (size of the columns, list (list containing the coordinates of the objects)
+;;Returns: The position where the X is going to be placed (using setRowValue and setColumnValue), will return (1, 2), where 1 is the row and 2 is the column
+(define (tileCheck x y m n lista)
+  (let* ((row (setRowValue y))
+         (column (setColumnValue x))
+         (position (cons (car column) row)))
+  (cond (( and (<= (car row) n) (<= (car column) m) (not (miembro? position lista)))
+         (drawX (car column) (car row))
+         (playerTurn column row n)
+         (let* ((result botTurn))
+           (cond ((null? result)
+                  (list position))
+                 (else
+                  (append (list (botTurn)) (list position))))))
+        (else
+         (showNotAvailable)
+         '()))))
+;; Function that checks if an element is inside the list
+;; Receives: element and list
+;; Returns: either true or false
 
+(define (miembro? ele lista)
+  (cond( (null? lista)
+         #f)
+       ( (equal? ele (car lista))
+         #t)
+       (else
+        (miembro? ele (cdr lista)))))
 
+;;-----------------------------------------Turn Management----------------------------------------------------------------------------------------------------------------
 
+;; Function that places the X in the logical matrix (inside TicTacToe_Logic.rkt), validates if there is a winner or a draw, updates the logical matrix.Only calls methods from TicTacToe_Logic.rkt for logical management.
+;; Receives: column (column obtained from mouseClick and validated by tileCheck), row (row obtained from mouseClick and validated by tileCheck)
+(define (playerTurn column row m)
+  (let* ( (result (placePlayerSymbol (car row) (car column) 1 m matrix matrix '() 1))
+          (row (car result))
+          (pos (cadr result))
+          (newMatrix (caddr result)))
+    (cond ((null? row)
+           (checkDraw)
+           (set! matrix newMatrix))
+          (else
+           (drawHorizontalDiagonal (cadar row) (caar row) (cadadr row)(caadr row))
+           (drawVertical  (cadar row) (caar row)  (cadadr row) (caadr row))
+           (showWinner)))))
+;;Function that places the tile for the AI, calls in the greedy algorithm from TicTacToe_Logic.rkt. Logically and graphically inserts the O tile in the matrix. As well as the playerTurn it first checks if the AI won or if there is a draw.
+;;Receives: None.
+;;Returns: The position where the AI placed the tile as a tuple (1,2)
+(define (botTurn)
+  (cond ((equal? (checkDraw) #f)
+         (let* ( (result (placeBotSymbol matrix 2))
+          (row (car result))
+          (pos (cadr result))
+          (newMatrix (caddr result)))
+        (cond ((null? row)
+                 (drawO (cadr pos) (car pos))
+                 (set! matrix newMatrix)
+                 (checkDraw)
+                 (list (cadr pos) (car pos)))
+                (else
+                 (drawO (cadr pos) (car pos))
+                 (drawHorizontalDiagonal (cadar row) (caar row) (cadadr row)(caadr row))
+                 (drawVertical  (cadar row) (caar row)  (cadadr row) (caadr row))
+                 (showLoser)
+                 '() ))))))
+;; Function that checks if the matrix is full, if this happens then no one won and is a draw
+;; Returns: True if matrix is full, False if not. 
+(define (checkDraw)
+  (cond (( equal? (fullMatrix matrix) #t)
+         (showDraw)
+         #t)
+        (else
+         #f)))
 
+;;--------------------------------- Windows for winning, losing and drawing --------------------------------------------------------------
+;;Functions that open a pop up window with the massage if you won, lost or drawn. Also there is another pop up notification if the tile you tried to use is not available (already used)
+;;Returns: Pop up window with the message, closes after couple of seconds. 
+(define (showLoser)
+  (define windowL (open-viewport "Loser" 300 50))
+  ((draw-viewport windowL) "black")
+  ((draw-string windowL) (make-posn 50 20) "You Lose, better luck next time" "red")
+  (sleep 5)
+  (close-viewport windowL))
 
+(define (showWinner)
+  (define windowW (open-viewport "Winner" 300 50))
+  ((draw-viewport windowW) "black")
+  ((draw-string windowW) (make-posn 50 20) "You win! Congratulations!" "red")
+  (sleep 5)
+  (close-viewport windowW))
 
+(define (showNotAvailable)
+  (define windowA (open-viewport "Not Available" 300 50))
+  ((draw-viewport windowA) "black")
+  ((draw-string windowA) (make-posn 50 20) "Sorry this tile is not available foryou to place an X" "red")
+  (sleep 1.5)
+  (close-viewport windowA))
 
+(define (showDraw)
+  (define windowD (open-viewport "Draw" 300 50))
+  ((draw-viewport windowD) "black")
+  ((draw-string windowD) (make-posn 50 20) "It's a draw! Better luck next time" "red")
+  (sleep 5)
+  (close-viewport windowD))
 
+(define (showWrongNumbers)
+  (define windowN (open-viewport "Draw" 300 50))
+  ((draw-viewport windowN) "black")
+  ((draw-string windowN) (make-posn 50 20) "Numbers placed for columns and rows are not valid, please run the program again and type values between 3 and 10." "red")
+  (sleep 2)
+  (close-viewport windowN))
 
+;;-------------------------------Line Drawing when won-------------------------------------------------------
 
+;;Function that draws a line between two positions horizontaly and diagonaly
+;;Receives: column1 and row1 (point of start of the line) and column2 and row 2 (point of end of the line)
+;;Returns: Drawing of the line on the GUI
+(define (drawHorizontalDiagonal column1 row1 column2 row2)
+  ((draw-line hidden-window) (make-posn (+ 65 (* 65 column1)) (- (* 65 row1) 27)) (make-posn (+ 65 (* 65 column2)) (- (* 65 row2) 27)) "red")
+  ((draw-line hidden-window) (make-posn (+ 65 (* 65 column1)) (- (* 65 row1) 26)) (make-posn (+ 65 (* 65 column2)) (- (* 65 row2) 26)) "red")
+  ((draw-line hidden-window) (make-posn (+ 65 (* 65 column1)) (- (* 65 row1) 25)) (make-posn (+ 65 (* 65 column2)) (- (* 65 row2) 25)) "red")
+  ((draw-line hidden-window) (make-posn (+ 65 (* 65 column1)) (- (* 65 row1) 24)) (make-posn (+ 65 (* 65 column2)) (- (* 65 row2) 24)) "red")
+  ((draw-line hidden-window) (make-posn (+ 65 (* 65 column1)) (- (* 65 row1) 23)) (make-posn (+ 65 (* 65 column2)) (- (* 65 row2) 23)) "red")
+  (copy-viewport hidden-window window))
+ 
+;;Function that draws a line between two positions vertically
+;;Receives: column1 and row1 (point of start of the line) and column2 and row 2 (point of end of the line)
+;;Returns: Drawing of the line on the GUI
+(define (drawVertical column1 row1 column2 row2)
+  ((draw-line hidden-window) (make-posn (+ 65 (* 65 column1)) (- (* 65 row1) 25)) (make-posn (+ 65 (* 65 column2)) (- (* 65 row2) 25)) "red")
+  ((draw-line hidden-window) (make-posn (+ 66 (* 65 column1)) (- (* 65 row1) 25)) (make-posn (+ 66 (* 65 column2)) (- (* 65 row2) 25)) "red")
+  ((draw-line hidden-window) (make-posn (+ 67 (* 65 column1)) (- (* 65 row1) 25)) (make-posn (+ 67 (* 65 column2)) (- (* 65 row2) 25)) "red")
+  ((draw-line hidden-window) (make-posn (+ 68 (* 65 column1)) (- (* 65 row1) 25)) (make-posn (+ 68 (* 65 column2)) (- (* 65 row2) 25)) "red")
+  ((draw-line hidden-window) (make-posn (+ 69 (* 65 column1)) (- (* 65 row1) 25)) (make-posn (+ 69 (* 65 column2)) (- (* 65 row2) 25)) "red")
+  (copy-viewport hidden-window window))
 
+;;------------------------------ GAME INITIALIZATION ----------------------------------------------------------------------------------------
+;;Function that starts the game, creates the graphic instances needed to open the game GUI and generates the logical matrix.
+;;Receives: m and n, values for columns and rows.
+;;Returns: Graphic and logic matrix ready to be updated (played)
+;;Restrictions: Must be integers between 3 and 10. 
+(define (TTT m n)
+  (cond ((and (>= m 3) (<= m 10) (>= n 3) (<= n 10))
+         ((draw-solid-rectangle hidden-window) (make-posn 0 0) lngth wdth "black")
+         ((draw-solid-rectangle hidden-window) (make-posn 850 65) 180 30 "black")
+         ((draw-string hidden-window) (make-posn 900 85) "Player's token: X" "red")
+         ((draw-solid-rectangle hidden-window) (make-posn 800 350) 300 8 "black")
+         ((draw-solid-rectangle hidden-window) (make-posn 855 380) 180 30 "black")
+         ((draw-string hidden-window) (make-posn 875 400) "Bot's token: O" "red")
 
-
+         (drawLines m n)(copy-viewport hidden-window window)
+         (set! matriz (GenerateLogicMatrix m n))
+         (mouseClick m n '()))
+        (else
+         (showWrongNumbers))))
+(copy-viewport hidden-window window)
 
 
 
