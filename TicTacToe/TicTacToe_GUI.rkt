@@ -297,7 +297,7 @@
          ((draw-string hidden-window) (make-posn 875 400) "Bot's token: O" "red")
 
          (drawLines m n)(copy-viewport hidden-window window)
-         (set! matriz (GenerateLogicMatrix m n))
+         (set! matrix (GenerateLogicMatrix m n))
          (mouseClick m n '()))
         (else
          (showWrongNumbers))))
