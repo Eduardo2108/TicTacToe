@@ -12,9 +12,9 @@
 ;;--------------Initial GUI values and image loading------------------------------------------------------------------
 
 ;;Lenght for the GUI window
-(define lngth 1100)
+(define lngth 800)
 ;;Width for the GUI window
-(define wdth 700)
+(define wdth 800)
 
 ;;Creates the window
 (define window (open-viewport "TicTacToe" wdth lngth))
@@ -70,15 +70,15 @@
 ;;Returns: Places X image in that position
 ;;Restrictions: None.
 (define (drawX x y)
-  ((draw-pixmap hidden-window) "Images/X.png" (make-posn (+ 45(* 65 x))(- (* 65 y) 45))
-  (copy-viewport hidden-window window)))
+  ((draw-pixmap hidden-window) "Images/X.png" (make-posn (+ 45(* 65 x))(- (* 65 y) 45)))
+  (copy-viewport hidden-window window))
 ;;Function that draws Y symbol con the matrix
 ;;Receives: x (x position), y (y position)
 ;;Returns: Places Y image in that position
 ;;Restrictions: None.
 (define (drawO x y)
-  ((draw-pixmap hidden-window) "Images/O.png" (make-posn (+ 45(* 65 x))(- (* 65 y) 45))
-  (copy-viewport hidden-window window)))
+  ((draw-pixmap hidden-window) "Images/O.png" (make-posn (+ 45(* 65 x))(- (* 65 y) 45)))
+  (copy-viewport hidden-window window))
 
 ;;-----------------------------Mouse implementation for clicking the tiles--------------------------------------
 ;; Function that works as a cycle and waits for the left-click to be pressed, once pressed saves the value of x and y of the position clicked and saves it on the list.
@@ -227,14 +227,17 @@
   (define windowL (open-viewport "Loser" 300 50))
   ((draw-viewport windowL) "black")
   ((draw-string windowL) (make-posn 50 20) "You Lose, better luck next time" "red")
-  (sleep 5)
+  (sleep 4)
+  (close-viewport window)
   (close-viewport windowL))
+
 
 (define (showWinner)
   (define windowW (open-viewport "Winner" 300 50))
   ((draw-viewport windowW) "black")
   ((draw-string windowW) (make-posn 50 20) "You win! Congratulations!" "red")
-  (sleep 5)
+  (sleep 4)
+  (close-viewport window)
   (close-viewport windowW))
 
 (define (showNotAvailable)
@@ -248,14 +251,15 @@
   (define windowD (open-viewport "Draw" 300 50))
   ((draw-viewport windowD) "black")
   ((draw-string windowD) (make-posn 50 20) "It's a draw! Better luck next time" "red")
-  (sleep 5)
+  (sleep 4)
+  (close-viewport window)
   (close-viewport windowD))
 
 (define (showWrongNumbers)
-  (define windowN (open-viewport "Draw" 300 50))
+  (define windowN (open-viewport "Draw" 800 50))
   ((draw-viewport windowN) "black")
-  ((draw-string windowN) (make-posn 50 20) "Numbers placed for columns and rows are not valid, please run the program again and type values between 3 and 10." "red")
-  (sleep 2)
+  ((draw-string windowN) (make-posn 50 20) "Numbers placed for columns and rows are not valid,\nplease run the program again and type values between 3 and 10." "red")
+  (sleep 4)
   (close-viewport windowN))
 
 ;;-------------------------------Line Drawing when won-------------------------------------------------------
