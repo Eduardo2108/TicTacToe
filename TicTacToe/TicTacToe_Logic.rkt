@@ -264,11 +264,11 @@ Receives: botTiles (list of placed tiles), tileToCheck (tile to analize), nToWin
           '())
       (if (= (length botTiles) 1)
           (if (= (cadar botTiles) (cadr tileToCheck))
-              (determinateTileToWinVerticaly (cdr botTiles) tileToCheck nToWin (append positions (list (caar botTiles))) candidates)
-              (determinateTileToWinVerticaly (cdr botTiles) tileToCheck nToWin positions candidates))                         
+              (tileToWinVerticaly (cdr botTiles) tileToCheck nToWin (append positions (list (caar botTiles))) candidates)
+              (tileToWinVerticaly (cdr botTiles) tileToCheck nToWin positions candidates))                         
           (if (= (cadar botTiles) (cadr tileToCheck))
-              (determinateTileToWinVerticaly (cdr botTiles) tileToCheck nToWin (append positions (list (caar botTiles))) candidates)
-              (determinateTileToWinVerticaly (cdr botTiles) tileToCheck nToWin positions candidates)))))
+              (tileToWinVerticaly (cdr botTiles) tileToCheck nToWin (append positions (list (caar botTiles))) candidates)
+              (tileToWinVerticaly (cdr botTiles) tileToCheck nToWin positions candidates)))))
 #|
 Function that determines the tile needed for the player or the bot to win vertically. If this function is called, means either the user or the bot are one position away from winning in one of the columns, checks if that tile to
 win is present in the candidates list, if it is the player can win with it. Works the same as determinateTileToWinHorizontaly
