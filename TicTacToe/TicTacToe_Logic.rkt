@@ -1,676 +1,281 @@
-  
 #lang racket
-;--------------------------------------------------------INICIO DEL JUEGO----------------------------------------------------------------------
-#|
-Params: dimentions of the matrix, m lines, n columns
-Funcion de inicio del juego. Recibe como parametros la cantidad de filas y de columnas que tendra la matriz a crear.
-Se realizan las validaciones necesarias para verificar que tanto n como m esten entre 3 y 10, dimensiones minimas y maximas
-que puede tener el tablero de tik tak toe. En caso de cumplir con una de las dimensiones permitidas, se procede a crear la matriz.
-|#
+
+;-------------------------------------------------------- Game start and matrix generation ----------------------------------------------------------------------
+
+;;Function that validates the value of te column and row (between 3 and 10 for both), if it applies calls the createMatrix function
+;;Receives: n (rows), m (columns)
+;;Returns: Call for another function, message if failed.
+;;Restrictions: Must be integers. 
 (define (GenerateLogicMatrix n m)
-    (cond ((and (>= m 3) (<= m 10) (>= n 3) (<= n 10)) (crearMatriz n m '()))
+    (cond ((and (>= m 3) (<= m 10) (>= n 3) (<= n 10)) (createMatrix n m '()))
     (else (display "The values given were incorrect."))))
               
-;-------------------------------------------------------CREACION DE LA MATRIZ------------------------------------------------------------------
 #|
-Funcion que se encarga de la creacion de la estructura de la matriz. De manera recursiva, por cada m especificado por el usuario al
-inicializar el programa, se le agrega a la estructura una nueva fila de dimension n. Al tener la matriz creada, de las dimensiones correctas,
-se inicia el ciclo de juego, siempre con el usuario colocando la primera ficha.
+Function that creates the matrix recursively, for every column specified by the user, it adds a row with size n using createRow.
+Receives: n (rows), m (columns)
+Returns: Call for another function, message if failed.
+Restrictions: Must be integers.
 |#
-(define (crearMatriz nContador mContador matriz)
-  (if (> mContador 0)
-      (crearMatriz nContador (- mContador 1) (append matriz (list(crearFila nContador '()))))
-      matriz
-  )
-)
+(define (createMatrix n m matrix)
+  (if (> m 0)(createMatrix n (- m 1) (append matrix (list(createRow n '()))))matrix))
 #|
-Funcion de creacion de filas. Funciona como auxiliar de la funcion anterior, que crea la matriz. Es llamada por cada m de las dimensiones de la
-matriz, y de manera recursiva agrega 0 (el valor que indica que el tablero esta vacio) por cada n de las dimensiones de la matriz. Esto quiere
-decir que se agregan n casillas m veces dentro de la matriz.
+Function that creates the rows for the matrix, called for every column in the matrix, and recursively adds a 0 for every row in the matrix, so that it ends up creating a n*m matrix full of 0 (value set as empty tile)
 |#
-(define (crearFila nContador filaCrear)
-  (if (> nContador 0)
-      (crearFila (- nContador 1) (append filaCrear '(0)))
-      filaCrear
-   )  
-)     
-;-----------------------------------------------------TURNO DEL JUGADOR-----------------------------------------------------------------------
+(define (createRow n row)
+  (if (> n 0)(createRow (- n 1) (append row '(0)))row))
+
+;----------------------------------------------------- Turn management -----------------------------------------------------------------------
 #|
-Funcion que se encarga de ejecutar el movimiento seleccionado por el usuario. Recibe como parametros la matriz, la columna y la fila donde se
-quiere colocar la ficha, ademas de las dimensiones maximas de la matriz de juego.
-
-
-Primero se valida que las posiciones m n donde se quiere colocar la ficha no sobrepasen a las dimensiones maximas de la matriz. En caso de ser
-asi, se llama a la funcion notificarError con un codigo de error 1 o 2, correspondiente a si es la posicion m o n la que causa el error.
-
-Luego, se valida que la posicion m n donde se quiere colocar la ficha no este ocupada, y en caso de estarla se llama a la funcion
-notificarError con el codigo de error 3.
-
-En caso de que la posicion m n corresponda a una de las posibles dimensiones, se llama a la funcion placePlayerSymbol.
+Function in charge of completing the movement made by the player. First checks that the values of m and n do not surpass the maximum dimensions of the matrix (initially stated by player).
+In case it surpasses the maximum it notifies as an error. Then checks if the position where the player wants to place the tile is not occupied already, if it is, it provides an error notification.
+In case none of these cases apply, and the tile is available, it calls the placePlayerSymbol function.
+Receives: matrix, m (column), n (row), nMax (maximum rows for the matrix), mMax (maximum columns for the matrix)
 |#
-(define (ejecutarMovimientoJugador matriz mPosicion nPosicion mMaximo nMaximo)
-  (if (> mPosicion mMaximo)
-     (notificarError 1 matriz mMaximo nMaximo)
-      (if (> nPosicion nMaximo)
-          (notificarError 2 matriz mMaximo nMaximo)          
-          (if (= (encontrarFichaPorPosicion matriz mPosicion nPosicion '()) 0)
-              (placePlayerSymbol mPosicion nPosicion 1 mMaximo matriz matriz '() 1)
-              (notificarError 3 matriz mMaximo nMaximo)
-          )
-     )
-  )
-)
+(define (executePlayerSelec matrix m n mMax nMax)
+  (if (> m mMax)(errorNotification 1 matrix mMax nMax)
+  (if (> n nMax)(errorNotification 2 matrix mMax nMax)          
+  (if (= (findTile matrix m n '()) 0)(placePlayerSymbol m n 1 mMax matrix matrix '() 1)(errorNotification 3 matrix mMax nMax)))))  
 #|
-Funcion que coloca la ficha del jugador. Recibe como parametros la posicion m, la posicion n, un contador que siempre inicia en 1, y que
-facilita el recorrido por las columnas de la matriz, la cantidad total de columnas m, la matriz a la que se le quiere agregar la ficha, la
-nueva matriz que se va formando de la antigua y el elemento que se quiere colocar, en este caso un 1 (que corresponde a la ficha definida
-para el usuario).
-
-Primero, se verifica si la posicion m (donde el usuario quiere colocar la ficha) corresponde al valor actual del contador. De ser asi, se sabe
-que la llamada recursiva actual es la que corresponde a la posicion de columna correcta dentro de la matriz, por lo que solo faltaria colocar
-la ficha en esa columna numero contador, en la posicion deseada nPosicion.
-Para esto se llama recursivamente a la funcion placePlayerSymbol (para que siga reconstruyendo la nueva matriz) pero aplicandole un cdr a la
-matriz y haciendole un append a la nueva matriz de la lista proveniente de la funcion auxiliar colocarFichaEnFila. Esta es la forma de ir
-actualizando la matriz al colocar una ficha. Se va "recortando" la matriz antigua con cdr y se van agregando las columnas con la ficha en
-su posicion n correspondiente.
-
-En caso de que la posicion indicada mPosicion no sea igual a contador, quiere decir que la llamada recursiva actual no es la que se encuentra
-sobre la columna deseada, por lo que se omite la modificacion de columna y se vuelve a llamar a si misma, aumentando el contador por 1,
-haciendole un cdr a la matriz, y agregandole a la nueva matriz la columna actual proveniente de car matriz.
-
-Es importante mencionar que la condicion de parada de esta llamada recursiva es cuando el contador sea mayor que el mTotal (la
-cantidad de columnas de la matriz), momento en el cual se ha recorrido, reconstruido y actualizado toda la matriz nueva a partir de la matriz
-original, y procede a llamarse a la funcion  actualizarMatriz.
+Function that places de X tile, first verifies if the m position is equal to the counter. If yes, means the current recursive call is equal to the correct column position, so it places it on that column and on the specified row.
+To do this, it recursively calls placePlayerSymbol, so that it shortens the oldMatrix by aplying cdr and appends the columns with the symbol placed in the correct n position into the newMatrix.
+If the counter is different from m (column), means we are not in the correct column, so it calls itself again, adding +1 to thecounter and applying cdr to the matrix. Also appends the current column to the newMatrix.
+Lastly, for the end case, is when counter is greater than mMax, in this moment the entire matrix has had been traversed, reconstructed and updated from the oldMatrix, once this happens, it calls updateMatrix to update the current one.
+Receives: m (column position), n (row position), counter (starts as 1), mMax (maximum columns of the matrix), oldMatrix (matrix to be added the tile), newMatrix (matrix to be formed from oldMatrix) and element (designated value for player = 1)
 |#
-(define (placePlayerSymbol mPosicion nPosicion contador mTotal matrizRespaldo matriz matrizNueva elemento)
-  (if (= mPosicion contador)
-      (placePlayerSymbol mPosicion
-                           nPosicion
-                           (+ contador 1)
-                           mTotal
-                           matrizRespaldo
-                           (cdr matriz)
-                           (append matrizNueva (list(colocarFichaEnFila nPosicion 1 (length (car matriz)) (car matriz) '() elemento)))
-                           elemento
-      )
-      (if (>= mPosicion contador)
-          (placePlayerSymbol mPosicion
-                               nPosicion
-                               (+ contador 1)
-                               mTotal
-                               matrizRespaldo
-                               (cdr matriz)
-                               (append matrizNueva (list(car matriz)))
-                               elemento
-          )
-          (if (<= contador mTotal)
-              (placePlayerSymbol mPosicion
-                                   nPosicion
-                                   (+ contador 1)
-                                   mTotal
-                                   matrizRespaldo
-                                   (cdr matriz)
-                                   (append matrizNueva (list(car matriz)))
-                                   elemento)(actualizarMatriz matrizRespaldo matrizNueva mPosicion nPosicion elemento)))))
+(define (placePlayerSymbol m n counter mMax oldMatrix matrix newMatrix element)
+  (if (= m counter)(placePlayerSymbol m n (+ counter 1) mMax oldMatrix (cdr matrix)(append newMatrix (list(placeTileInRow n 1 (length (car matrix)) (car matrix) '() element)))element)
+  (if (>= m counter)(placePlayerSymbol m n (+ counter 1) mMax oldMatrix (cdr matrix)(append newMatrix (list(car matrix)))element)
+  (if (<= counter mMax)(placePlayerSymbol m n (+ counter 1) mMax oldMatrix (cdr matrix)(append newMatrix (list(car matrix)))element)(updateMatrix oldMatrix newMatrix m n element)))))
 #|
-Funcion auxiliar que se encarga de colocar las fichas en la columna especifica, encontrada a partir de la funcion anterior. Recibe como
-parametros a la posicion dentro de la fila a donde se quiere colocar la ficha, un contador que facilite el recorrido dentro de la fila,
-la dimension total de la fila, la fila original, la nueva fila que se actualiza al agregar el elemento, y el elemento que se quiere agregar.
-
-Trabaja de forma similar a la funcion anterior, reconstruyendo la nueva fila a partir de la fila anterior de manera recursiva, hasta que el
-contador es igual a la posicion n especifica, momento en el cual el valor se cambia por el elemento.
-
-Una vez mas, la condicion de parada es cuando el contador sea mayor que la dimension maxima de la fila nTotal, momento en el cual se sabe
-que la fila ya esta correctamente reconstruida, al haberla recorrido en su totalidad. Eh ese momento devuelve a la nueva fila ya actualizada
-a la funcion placePlayerSymbol, para que esta siga reconstruyendo la matriz.
+Function that places the symbol in the specified column, obtained from placePlayerSymbol. Works similar to placePlayerSymbol, as it reconstructs the new row from the old row recursively until the counter is the same as the
+specified value for n. When this happens the value is swapped for the element. The stop condition is when the counter is greater than the nMax, in this moment we know the row is correctly reconstructed and traversed. In this
+moment it returns the updated row to the placePlayerSymbol function, so it can continue to reconstruct the matrix.
+Receives: nPos (position inside the row to place the symbol), counter (starts as 1), nMax (total dimension of the row), row (original row), newRow (row to be updated when added the element)and element (1 as designated)
 |#
-(define (colocarFichaEnFila nPosicion contador nTotal fila nuevaFila elemento)
-  (if (= nPosicion contador)
-      (colocarFichaEnFila nPosicion
-                          (+ contador 1)
-                          nTotal
-                          (cdr fila)
-                          (append nuevaFila (list elemento))
-                          elemento
-      )
-      (if (>= nPosicion contador)
-          (colocarFichaEnFila nPosicion
-                              (+ contador 1)
-                              nTotal
-                              (cdr fila)
-                              (append nuevaFila (list(car fila)))
-                              elemento
-          )
-          (if (<= contador nTotal)
-              (colocarFichaEnFila nPosicion
-                                  (+ contador 1)
-                                  nTotal
-                                  (cdr fila)
-                                  (append nuevaFila (list(car fila)))
-                                  elemento
-              )
-              nuevaFila
-         )
-      )
-  )
-)
+(define (placeTileInRow nPos counter nMax row newRow element)
+  (if (= nPos counter)(placeTileInRow nPos(+ counter 1) nMax (cdr row) (append newRow(list element)) element)
+  (if (>= nPos counter)(placeTileInRow nPos(+ counter 1) nMax (cdr row) (append newRow (list(car row))) element)
+  (if (<= counter nMax)(placeTileInRow nPos (+ counter 1) nMax (cdr row) (append newRow (list(car row))) element) newRow))))
 #|
-Funcion encargada de mostrar al usuario la matriz actualizada en consola, ademas de devolverla al cicloDeJuego para que este pueda seguir
-su correcto funcionamiento una vez que el usuario coloca una ficha. Recibe como parametros unicamente a la matriz actualizada.
+Function that shows the user the updated matrix (in console) for control. Also, it returns the matrix to the gameloop so it can work again after the user used his turn. Works as the loop for the game, and status checks. 
+Receives: matrix (old matrix to take into consideration), newMatrix (matrix to be reconstructed from the old one), mPos (column value), nPos (row value), element (element to be added)
 |#
-(define (actualizarMatriz matriz matrizNueva mPosicion nPosicion elemento)
-  (display "REVISANDO ")
-  (display (append (list mPosicion) (list nPosicion)))
-  (display (revisarGaneDiagonal matriz (diagonalesValidas matriz) '() 1 "Logica"))
-  (display matriz)
+(define (updateMatrix matrix newMatrix mPos nPos element)
+  (display "Checking...")
+  (display (append (list mPos) (list nPos)))
+  (display (checkDiagonalWin matrix (validDiagonals matrix) '() 1 "Logic"))
+  (display matrix)
   (display "\n")
-
-  
-  (if (= elemento 1)
-      (if (equal? (revisarGaneHorizontal (encontrarFichasColocadas matriz '() 0 1 1 '())
-                                         (encontrarFichasColocadas matriz '() 0 1 1 '())
-                                         (length (car matriz))
-                                         '()
-                                         (encontrarFichasColocadas matriz '() 0 1 0 '())
-                  )
-                  (append (list mPosicion) (list nPosicion))
-          )
-          (printPrueba(append (list (append (list (append (list (car (revisarGaneHorizontal (encontrarFichasColocadas matriz '() 0 1 1 '())
-                                                                                (encontrarFichasColocadas matriz '() 0 1 1 '())
-                                                                                (length (car matriz))
+  (if (= element 1)(if (equal? (checkHorizontalWin (findPlacedTiles matrix '() 0 1 1 '()) (findPlacedTiles matrix '() 0 1 1 '()) (length (car matrix)) '() (findPlacedTiles matrix '() 0 1 0 '()))
+                                (append (list mPos) (list nPos)))
+          (printCheck(append (list (append (list (append (list (car (checkHorizontalWin (findPlacedTiles matrix '() 0 1 1 '())
+                                                                                (findPlacedTiles matrix '() 0 1 1 '())
+                                                                                (length (car matrix))
                                                                                 '()
-                                                                                (encontrarFichasColocadas matriz '() 0 1 0 '())
-                                                         )
-                                                    )
-                                              )
-                                              (list 1)
-                                      )
-                                )
-                                (list (append (list (car (revisarGaneHorizontal (encontrarFichasColocadas matriz '() 0 1 1 '())
-                                                                                (encontrarFichasColocadas matriz '() 0 1 1 '())
-                                                                                (length (car matriz))
+                                                                                (findPlacedTiles matrix '() 0 1 0 '())))) (list 1) ))
+                                            (list (append (list (car (checkHorizontalWin (findPlacedTiles matrix '() 0 1 1 '())
+                                                                                (findPlacedTiles matrix '() 0 1 1 '())
+                                                                                (length (car matrix))
                                                                                 '()
-                                                                                (encontrarFichasColocadas matriz '() 0 1 0 '())
-                                                         )
-                                                    )
-                                              )
-                                              (list (length (car matriz)))
-                                      )
-                               )
-                        )
-                  )                    
-                  (list (append (list mPosicion) (list nPosicion)))
-                  (list matrizNueva)
-          ))
-          (if (equal? (revisarGaneVertical (encontrarFichasColocadas matriz '() 0 1 1 '())
-                                           (encontrarFichasColocadas matriz '() 0 1 1 '())
-                                           (length matriz)
-                                           '()
-                                           (encontrarFichasColocadas matriz '() 0 1 0 '())
-                      )
-                      (list (append (list mPosicion) (list nPosicion)))
-              )
-              (printPrueba(append (list (append (list (append (list (cadr (revisarGaneVertical (encontrarFichasColocadas matriz '() 0 1 1 '())
-                                                                                   (encontrarFichasColocadas matriz '() 0 1 1 '())
-                                                                                   (length matriz)
-                                                                                   '()
-                                                                                   (encontrarFichasColocadas matriz '() 0 1 0 '())
-                                                             )
-                                                        )
-                                                  )
-                                                  (list 1)
-                                          )
-                                    )
-                                    (list (append (list (cadr (revisarGaneVertical (encontrarFichasColocadas matriz '() 0 1 1 '())
-                                                                                   (encontrarFichasColocadas matriz '() 0 1 1 '())
-                                                                                   (length matriz)
-                                                                                   '()
-                                                                                   (encontrarFichasColocadas matriz '() 0 1 0 '())
-                                                             )
-                                                       )
-                                                  )
-                                                  (list (length matriz))
-                                          )
-                                    )
-                            )
-                      )
-                      (list (append (list mPosicion) (list nPosicion)))
-                      (list matrizNueva)
-              ))
-              (if (equal? (revisarGaneDiagonal matriz (diagonalesValidas matriz) '() 1 "Logica")
-                          (append (list mPosicion) (list nPosicion))
-                  )
-                  (printPrueba(append (list (append (list (car (revisarGaneDiagonal matriz (diagonalesValidas matriz) '() 1 "Interfaz")))
-                                                    (list (ultimoElementoLista (revisarGaneDiagonal matriz (diagonalesValidas matriz) '() 1 "Interfaz")))
-                                )
-                          )
-                          (list (append (list mPosicion) (list nPosicion)))
-                          (list matrizNueva)
-                  ))
-
-                  (printPrueba(append (list '())
-                          (list (append (list mPosicion) (list nPosicion)))
-                          (list matrizNueva)
-                  ))
-              )
-          )
-      )
-  matrizNueva
-  )
-)
-             
+                                                                                (findPlacedTiles matrix '() 0 1 0 '()))))(list (length (car matrix)))))))
+                              (list (append (list mPos) (list nPos)))
+                              (list newMatrix)))
+          (if (equal? (checkVerticalWin (findPlacedTiles matrix '() 0 1 1 '()) (findPlacedTiles matrix '() 0 1 1 '()) (length matrix) '() (findPlacedTiles matrix '() 0 1 0 '()))
+                      (list (append (list mPos) (list nPos))))
+          (printCheck(append (list (append (list (append (list (cadr (checkVerticalWin (findPlacedTiles matrix '() 0 1 1 '())
+                                                                                   (findPlacedTiles matrix '() 0 1 1 '())
+                                                                                   (length matriz)'()
+                                                                                   (findPlacedTiles matrix '() 0 1 0 '()))))(list 1)))
+                                    (list (append (list (cadr (checkVerticalWin (findPlacedTiles matrix '() 0 1 1 '())
+                                                                                   (findPlacedTiles matrix '() 0 1 1 '())
+                                                                                   (length matrix)'()
+                                                                                   (findPlacedTiles matrix '() 0 1 0 '()))))(list (length matrix))))))
+                      (list (append (list mPos) (list nPos)))
+                      (list newMatrix)))
+              (if (equal? (checkDiagonalWin matrix (validDiagonals matrix) '() 1 "Logic") (append (list mPos) (list nPos)))
+                  (printCheck(append (list (append (list (car (checkDiagonalWin matrix (validDiagonals matrix) '()  1  "GUI")))
+                                                    (list (listLastElement (checkDiagonalWin matrix (validDiagonals matrix) '()  1  "GUI")))))
+                          (list (append (list mPos) (list nPos)))
+                          (list newMatrix)))
+                  (printCheck(append (list '())
+                          (list (append (list mPos) (list nPos)))
+                          (list newMatrix)))))) newMatrix))          
 #|
-Funcion encargada de la notificacion y correcion de errores en la colocacion de fichas. Recibe como parametros un codigo de error, la matriz,
-y las dimensiones de la misma. En caso de que el usuario coloque un valor de m o n mayor a los permitidos, le sera notificado por medio de
-esta funcion. El error de tipo 1 corresponde a una posicion m que excede las dimensiones de la matriz. El error de tipo 2 corresponde a una
-posicion n que excede las dimensiones de la matriz. El error de tipo indica que esa posicion m n ya esta ocupada.
-En caso de existir errores, se llama a la funcion ejecutarMovimientoJugador, con el fin de que el usuario corrija las posiciones seleccionadas.
+Function that notifies the user if there is any error, if selected m or n is greater than maximum, user will be notified. errType 1 is when m exceed the maximum,
+errType 2 is when n exceeds the maximum and the last errType is when the selected tile is already occupied.
+Receives: errType (numcoded for management), matrix (matrix tobe worked on), nMax and mMax (dimensions of the matrix).
 |#
-(define (notificarError tipo matriz mMaximo nMaximo)
-  (if (= tipo 1)
-      (display "Se ha colocado una posicion de columna no valida para las dimensiones de la matriz \n")
-      (if (= tipo 2)
-          (printf "Se ha colocado una posicion de fila no valida para las dimensiones de la matriz \n")
-          (printf "Se ha colocado una posicion donde ya existe una ficha en la matriz \n")
-      )
-  )
-  (ejecutarMovimientoJugador matriz (string->number (read-line)) (string->number (read-line)) mMaximo nMaximo)
-)                                
-;--------------------------------------------------------RECORRER LA MATRIZ--------------------------------------------------------------------
+(define (errorNotification errType matrix mMax nMax)
+  (if (= errType 1)(display "Column position selected is not valid for the matrix dimensions \n")
+  (if (= errType 2)(display "Row position selected is not valid for the matrix dimensions \n")
+      (display "The position selected is already occupied by another symbol \n")))
+  (executePlayerSelec matrix (string->number (read-line)) (string->number (read-line)) mMax nMax))
+
+;-------------------------------------------------------- Traversing the matrix --------------------------------------------------------------------
 #|
-Funcion que encuentra todas las posiciones (m n) donde hayan fichas de tipo 1 (jugador), 2 (maquina) o 0 (espacio vacio). Recibe como
-parametros a la matriz, la columna actual, un contador para recorrer las columnas, un contador para recorrer las filas, el elemento que
-se busca en la matriz y una lista de tuplas (m n) donde se van almacenando las posiciones donde se encuentre al elemento.
-
-Contrario a la funcion de agregar fichas, esta trabaja sin necesidad de actualizar una nueva matriz, por lo que se puede simplemente ir
-"recortandola" a lo largo de la ejecucion recursiva.
-
-Primero, la condicion de parada ocurre si tanto la columna actual mActual como la matriz son nulas (ya no quedan elementos que analizar en
-la matriz). En caso de ocurrir esto, se llama a la funcion auxiliar actualizarPosiciones para que notifique al usuario.
-
-En caso de que solo la columna actual mActual sea nula, quiere decir que ya se analizaron todas las posiciones de dicha columna, por lo que se
-procede a llamar a la funcion encontrarFichasColocadas con el cdr de la matriz, la nueva columna actual como el car de la matriz, aumentando
-el contador de la columna donde se encuentra la funcion, reiniciando el contador de fila nContador a 1 (por cada nueva columna, la fila empieza
-a contarse en 1) y conservando tanto el elemento buscado como las posiciones previas encontradas.
-
-En caso de que la columna actual mActual no sea nula, quiere decir que quedan elementos por revisar en la misma. Se hace un condicional para
-verificar si el primer elemento de la columna actual mActual es igual al elemento, y de ser asi, se hace una llamada recursiva recortando con
-cdr la mActual, aumentando el contador de fila, y agregando a las posiciones la tupla (mContador nContador). Caso contrario, se realiza
-lo anteriormente descrito, pero sin agregar nada a las posiciones.
+Function that finds all the positions (m n) that contains 1 (player value), 2 (bot value) or 0 (empty value).
+Base case: when both currentm (current column) and the matrix are null (all elements were analyzed). If  this is the case, it calls updatePositions to notify the user.
+If only currentm is null, means all positions from that column have been checked, so it calls itself with the cdr of the matrix, the new currentm will be the car of the matrix, the mCounter will be added by 1, nCounter will be
+restored to 1 but keeps the element as well as the positions found.
+If currentm is not null, means there are still elements to be checked in the column. Checks if the car of currentm is equal to the element, if it is, calls itself recursively, changing currentm to cdr of currentm, adding up nCounter
+and adding those positions as a tuple, if is not equal, does the same without adding the positions.
+Receives: matrix (current matrix), currentm (column that is being checked), mCounter (counter to save m value if element is found), nCounter (counter to save n value if element is found), element (to be found), positions (list)
 |#
-(define (encontrarFichasColocadas matriz mActual mContador nContador elemento posiciones)
-  (if (null? mActual)
-      (if (null? matriz)
-          (actualizarPosiciones posiciones elemento)
-          (encontrarFichasColocadas (cdr matriz)
-                                    (car matriz)
-                                    (+ mContador 1)
-                                    1
-                                    elemento
-                                    posiciones
-          )      
-      )
-      (if (equal? (car mActual) elemento)
-          (encontrarFichasColocadas matriz
-                                    (cdr mActual)
-                                    mContador
-                                    (+ nContador 1)
-                                    elemento
-                                    (append posiciones (list (list mContador nContador)))
-          )
-                                                                                      
-          (encontrarFichasColocadas matriz
-                                    (cdr mActual)
-                                    mContador
-                                    (+ nContador 1)
-                                    elemento
-                                    posiciones
-          )
-      )
-  )
-)
+(define (findPlacedTiles matrix currentm mCounter nCounter element positions)
+  (if (null? currentm)
+      (if (null? matrix)
+          (updatePositions positions element)(findPlacedTiles (cdr matrix) (car matrix) (+ mCounter 1) 1 element positions))
+      (if (equal? (car currentm) element)
+          (findPlacedTiles matrix (cdr currentm) mCounter (+ nCounter 1) element (append positions (list (list mCounter nCounter))))                                                                          
+          (findPlacedTiles matrix (cdr currentm) mCounter (+ nCounter 1) element positions))))
 #|
-Funcion que encuentra el valor de la ficha de una posicion especifica. Nuevamente, funciona de manera similar al procedure anterior. Recibe
-como parametros a la matriz, la posicion m n deseada y la columna actual.
-
-Primero, si la columna actual es nula, quiere decir que en la misma no estaba el elemento, por lo que se procede a la siguiente iteracion, esta
-vez con el cdr de la matriz como la matriz, y el car de la matriz como la columna actual.
-
-Si la columna actual no es nula, pero la mPosicion (la posicion que se busca) es mayor que 1, se debe seguir con la siguiente iteracion, porque
-esto significa que la posicion mPosicion esta mas adelante en la matriz. Se hace el cdr de la matriz, se le resta 1 a mPosicion y se selecciona
-la mActual como el car de la matriz (con el fin de ir avanzando en posiciones de columna)
-
-Ahora, en caso de que la posicion mActual si sea 1, quiere decir que se esta ubicado en la columna correcta, por lo que se repite el proceso,
-esta vez con el contador nPosicion, para encontrar el elemento n dentro de la columna m. Nuevamente, se resuelve por medio de llamadas
-recursivas que va aplicando un cdr a la mActual, y restandole 1 a la nPosicion.
-
-Una vez que tanto mPosicion como nPosicion son iguales a 1 se puede afirmar que la iteracion se encuentra ubicada "sobre" el elemento deseado,
-por lo que se llega a la posicion de parada y se retorna el car de la mActual (que contiene al elemento dentro de la posicion seleccionada).
+Function that finds the value of the tile in an specified position. Works similar to findPlacedTiles.
+If currentm is null, means the element is not in that column. So recursively calls itself again, with the cdr of the matrix as the matrix and car of the matrix as currentm.
+If currentm is not null, but mPos is greater than 1, means that mPos is further in the matrix, so recursively calls it self with cdr of the matrix, mPos - 1 and with currentm as the car of the matrix.
+If currentm is not null, and is equal to 1, means that it is placed in the correct column, so it repeats the process changing the row value till found.
+If mPos and nPos are equal to 1, means it is placed on the wanted tile, so it hits the base case and returns the car of currentm (containing the element inside the selected position).
+Receives: matrix (current matrix), nPos (row position), mPos (column position) and currentm (column current being checked)
 |#
-(define (encontrarFichaPorPosicion matriz mPosicion nPosicion mActual)
-  (if (null? mActual)
-      (encontrarFichaPorPosicion (cdr matriz) mPosicion nPosicion (car matriz))
-      (if (> mPosicion 1)
-          (encontrarFichaPorPosicion (cdr matriz) (- mPosicion 1) nPosicion (car matriz))
-          (if (> nPosicion 1)
-              (encontrarFichaPorPosicion matriz mPosicion (- nPosicion 1) (cdr mActual))
-              (car mActual)
-          )
-     )
-  )
-)                                    
+(define (findTile matrix mPos nPos currentm)
+  (if (null? currentm)
+      (findTile (cdr matrix) mPos nPos (car matrix))
+  (if (> mPos 1)
+      (findTile (cdr matrix) (- mPos 1) nPos (car matrix))
+  (if (> nPos 1)
+      (findTile matrix mPos (- nPos 1) (cdr currentm))
+      (car currentm)))))                                  
 #|
-Funcion auxiliar utilizada para notificar al usuario de las posiciones donde se encuentran sus fichas y las de la maquina. Recibe como
-parametros a la lista de tuplas de las posiciones, ademas del elemento que se busco (puede ser 1 o 2).
-
-En caso de que el elemento sea 1, se notifica refiriendose al jugador. En caso de que el elemento sea 2, se notifica refiriendose
-a la maquina. En caso de que el elemento sea 0, notifica en referencia a los espacios vacios dentro de la matriz. Seguidamente
-se muestra en consola la lista de posiciones.
-
-Finalmente se retorna la lista de posiciones para el resto de funciones que asi lo requieran.
+Function that notifies the user of the position of their tiles and the bot's. If element is 1, means it's user's. If element is 2, means it's bot's. If element is 0, notifies user of the blank spaces in the matrix, then
+shows the position list on the console.
+Receives: positions (list with tuples of the positions), element (can be either 1, 2 or 0.
 |#
-(define (actualizarPosiciones posiciones elemento)
-  (if (= elemento 1)
-      (display "El jugador tiene las siguientes fichas en juego ")
-      (if (= elemento 2)
-          (display "La maquina tiene las siguientes fichas en juego ")
-          (display "Los candidatos posibles para colocar son los siguientes ")
-      )
-  )
-  (display posiciones)
-  (display "\n")
-  posiciones   
-)
-(define (ultimoElementoLista lista)
+(define (updatePositions positions element)
+  (if (= element 1)
+      (display "Next turn is for the player")
+  (if (= element 2)
+      (display "Next turn is for the bot")
+      (display "Posible candidates to place are:")))
+      (display positions) (display "\n") positions)
+#|
+Function that returns the last element of a list
+|#
+(define (listLastElement lista)
   (if (null? (cdr lista))
       (car lista)
-      (ultimoElementoLista (cdr lista))
-  )
-)
-;--------------------------------------------------------TURNO DE LA MAQUINA-------------------------------------------------------------------
+      (listLastElement (cdr lista))))
+;-------------------------------------------------------- AI's turn -------------------------------------------------------------------
 #|
-Funcion encargada de colocar la ficha de la maquina. Recibe como parametros la matriz de juego y el elemento que se colocara dentro de la misma,
-que es por defecto un 2. Esta funcion tiene la finalidad de ayudar a controlar el flujo de juego, al llamarse de forma recursiva y alternada
-con la funcion respectiva del turno del usuario. Basicamente inicializa el algoritmo voraz.
+Start Function of the greedy algorithm. It places the bot's tile. This function is used for an organized flow of the turns, alternating between the player's function and the bot's function.
+Receives: matrix, element. 
 |#
-(define (placeBotSymbol matriz elemento)
-  (ejecutarAlgoritmoVoraz matriz)
+(define (placeBotSymbol matrix element)
+  (runGreedyAlgorithm matrix)
 )
-
+;-------------------------------------------------------- Horizontal Win Check ---------------------------------------------------------------------------------------------------
 #|
-Funcion encargada de verificar si existe un gane horizontal, ya sea por parte del usuario o de la maquina. Recibe como parametros a las fichas
-ya sea del usuario o de la maquina en los parametros llamados fichasMaquina y fichasMaquinaAuxiliar, una de las listas se utiliza para recorrer
-la lista (se va recortando) y la otra se utiliza para comparar, por lo que es necesario contar con ambas. Adicionalmente, considerando que la
-matriz cuenta con n filas y m columnas, se recibe como parametro este numero m, que sera la cantidad requerida por una linea horizontal para
-ser considerada un gane valido. Finalmente, se recibe una ficha para ganar que es una tupla (n m), que se maneja de esta manera para detener
-la recursion en el momento que deje de ser nula, es decir, en el momento que se encuentre la primera solucion valida, con la finalidad de
-optimizar la ejecucion y no evaluar todas las posiciones si ya se encuentra un gane valido. Recibe tambien la lista de candidatos posibles
-para colocar una ficha, con la finalidad de pasarlo a las funciones auxiliares.
-
-Primeramente, valida que la lista de fichas maquina no sea una lista nula. Si es nula, quiere decir que no se encontro una solucion valida
-entre todas las fichas colocadas por el usuario o por la maquina, por lo que se retorna un valor nulo por defecto de la ficha para ganar.
-
-En caso de no ser nula, se evalua si la ficha para ganar es nula. En caso de ser nula, quiere decir que no se ha dado con una solucion exitosa
-dentro de las posibles lineas horizontales, por lo que se llama de manera recursiva, recortando la lista de fichas auxiliares, y actualizando
-la posible ficha para ganar llamando a la funcion fichaParaGanarHorizontal.
-
-En caso de que la ficha para ganar no sea nula, quiere decir que se ha encontrado una solucion horizontal, y se devuelve este valor para que
-el programa no tenga que verificar el resto de fichas colocadas por el usuario o por la maquina.
+Function that verifies if there is a horizontal win, either from the player or the bot. First it validates that botTilesAux is not null, if it is, means there was not a valid solution in all of the tiles placed by the user and
+the bot, so it returns a null tileToWin. If it is not null, it checks if the tile to win is null, if it is, means there is no correct solution between the possible horizontal lines, so it calls itselft recursively, aplying cdr
+to the tile list and updating the posible tile to win calling the function tileToWinHorizontaly.
+If tileToWin is not null, means it found a horizontal win solution, and returns that tile, so the program doesn't have to verify the rest of the tiles placed.
+Receives: botTiles (used to compare), botTilesAux (used to traverse the list (applying cdr)), mToWin (required value of the horizontal line to be considered a win), tiletoWin (tuple), candidates (candidate list, called in to use in other functions).
 |#
-(define (revisarGaneHorizontal fichasMaquina fichasMaquinaAuxiliar mParaGanar fichaParaGanar candidatos)
-  (if (null? fichasMaquinaAuxiliar)
-      fichaParaGanar
-
-      (if (null? fichaParaGanar)
-          (revisarGaneHorizontal fichasMaquina
-                                 (cdr fichasMaquinaAuxiliar)
-                                 mParaGanar
-                                 (fichaParaGanarHorizontal fichasMaquina (car fichasMaquinaAuxiliar) mParaGanar '() candidatos)
-                                 candidatos
-          )
-          fichaParaGanar
-      )
-  )
-)
+(define (checkHorizontalWin botTiles botTilesAux mToWin tileToWin candidates)
+  (if (null? botTilesAux)
+      tileToWin
+  (if (null? tileToWin)
+      (checkHorizontalWin botTiles (cdr botTilesAux) mToWin (tileToWinHorizontaly botTiles (car botTilesAuxiliar) mToWin '() candidates) candidates)
+      tileToWin)))
 #|
-Funcion que analiza cada una de las fichas colocadas por la maquina o por el usuario, y las compara con la lista de todas las fichas colocadas
-por el mismo. Recibe como parametro la lista de fichas colocadas, la ficha especifica a analizar, la cantidad necesaria de fichas en la misma
-fila para ganar, y mantiene un parametro recursivo con las posiciones presentes de fichas dentro de una determinada fila n, con la finalidad
-de, en caso de faltar solo una ficha dentro de esa fila, cual es la posicion ausente que provocaria el gane de la maquina o del usuario.
-Recibe tambien la lista de candidatos posibles para colocar una ficha, con la finalidad de pasarlo a las funciones auxiliares.
-
-Primeramente, se valida como condicion de parada de la recursividad que la lista de fichas colocadas sea nula. En caso de ser nula, quiere
-decir que ya se analizaron todas las posibles fichas en comparacion de la fichaAnalizar, por lo que la cantidad de fichas presentes en una
-determinada fila n debe estar a una unidad de la cantidad mParaGanar para poder deducir que en esta fila n hay un gane posible.
-
-De ser asi, se llama a la funcion auxiliar determinarFichaParaGanarHorizontal, que determinara cual es la ficha faltante en esa fila n, la cual
-sera la ficha que permitira a la maquina o al usuario ganar la partida. En caso de que la cantidad de fichas presentes en esa fila n no este a
-una unidad indica dos posibles situaciones: el jugador contrario ya tiene fichas en esa fila, o falta mas de un espacio vacio que rellenar
-con fichas propias para poder generar una linea valida. En este ultimo escenario, se retorna una lista nula como representacion de que no
-existe una solucion valida para esta fila n especifica.
-
-En caso de que la lista de fichas colocadas no sea nula, quiere decir que dentro de la misma pueden haber fichas que posibiliten una linea
-ganadora, por lo que se procede a comparar si el caar (el primer elemento del primer elemento) de las fichas colocadas (numero que indica la
-fila n) sea igual a el car (primer elemento) de la ficha analizar. Esto significaria que la fila de la ficha por analizar es la misma de la
-fila de la ficha actual dentro de la lista. Debido a esto, se llama de forma recursiva a la funcion, recortando la lista de fichas colocadas,
-y agregando el cdar (el ultimo elemento de la tupla, del primer elemento) de las fichas colocadas. Esta actualizacion de presentes quiere decir
-que, dentro de esa fila n, hay una nueva posicion m que si tiene una ficha colocada.
-
-En caso de que no sea igual, simplemente se recorta la lista de las fichas colocadas dentro de la llamada recursiva.
+Function that analizes every tile placed by the bot or the user and compares them with the list of all the tiles placed by it. First as the base case, it validates that the botTiles list is null, if it is, means all the posible
+ tiles had been checked and compared to tileToCheck, so the quantity of the present tiles in the row is one position away from the mToWin, so it can deduce that in this row there is a possible win. If this happens it calls the
+function determinateTileToWinHorizontaly, that determines which is the tile missing in that row to win. If there is more than one tile left to win, means that either the player already has tiles on that row, or that there is more
+than one blank tile to fill, if this happens, it returns a null list to show there is no valid solution for that row.
+If the botTiles is not null, means that there might be tiles that can provide a win, so it checks that the caar of the botTiles, is the same as the car of the tileToCheck, meaning that the row of the tileToCheck is the same as the
+row row of the current tile in the list. So it calls itselft recursively, applying cdr to botTiles, and appending the cdar of the botTiles to the position list. This means that inside that n row, there is another position in m
+(column) that contains the placed tile.
+If they are not the same, it only calls itself aplying cdr to botTiles so it can check the next row.
+ Receives: botTiles (list of placed tiles), tileToCheck (tile to analize), mToWin (quantity of tiles needed in that row to win), positions (recursive param with the position of the tiles placed on that row) and candidates (also posible candidates).
 |#
-(define (fichaParaGanarHorizontal fichasMaquina fichaAnalizar mParaGanar presentes candidatos)
-  (if (null? fichasMaquina)
-      (if (= (+ (length presentes) 1) mParaGanar)
-          (determinarFichaParaGanarHorizontal presentes fichaAnalizar 1 candidatos)
-          '()
-      )
-      (if (= (caar fichasMaquina) (car fichaAnalizar))
-          (fichaParaGanarHorizontal (cdr fichasMaquina)
-                                    fichaAnalizar
-                                    mParaGanar
-                                    (append presentes (cdar fichasMaquina))
-                                    candidatos
-          )
-          (fichaParaGanarHorizontal (cdr fichasMaquina)
-                                     fichaAnalizar
-                                     mParaGanar
-                                     presentes
-                                     candidatos
-          )
-      )
-  )
-)
+(define (tileToWinHorizontaly botTiles tileToCheck mToWin positions candidates)
+  (if (null? botTiles)
+      (if (= (+ (length positions) 1) mToWin)
+          (determinateTileToWinHorizontaly positions tileToCheck 1 candidates) '())
+      (if (= (caar botTiles) (car tileToCheck))
+          (tileToWinHorizontaly (cdr botTiles) tileToCheck mToWin (append positions (cdar botTiles)) candidates)
+          (tileToWinHorizontaly (cdr botTiles) tileToCheck mToWin positions candidates))))
 #|
-Funcion final dentro de la validacion de los ganes horizontales. El programa llega a esta funcion solo si de antemano se ha determinado que
-la cantidad de fichas de un mismo jugador dentro de una fila esta a una unidad de la cantidad necesaria para ganar, dada por la dimension m
-de la matriz. Recibe como parametros la lista de posiciones m donde hay fichas, la ficha en cuestion que esta siendo analizada, y un contador
-que sirve de parametro auxiliar recursivo. Finalmente, recibe la lista de candidatos para verificar si se puede colocar una ficha en el
-lugar indicado dentro de la matriz
-
-Si la cantidad de posiciones presentes es nula, quiere decir que se ha llegado al final de posibles posiciones a analizar dentro de la fila,
-por lo que se retorna entonces la posicion de la ficha ganadora como (posicion n de la ficha a analizar, contador), representando que la unica
-posicion valida seria la ultima de la fila, la que tenga un valor de columna m.
-
-En caso de que aun queden elementos en la lista de posiciones presentes, se verifica si el contador es igual al primer elemento de esta lista.
-De ser asi, quiere decir que la posicion m ausente no es la actual, ya que el contador es una forma de preguntarle al programa si un valor, que
-empieza en 1 y termina en m, esta dentro de lista de posiciones posibles que ya tienen una ficha del jugador. Debido a esto, se sabe
-que la posicion ganadora, ausente de ficha, no es la que se encuentra en la iteracion actual, por lo que se procede a la siguiente llamada,
-recortando la lista de presentes, y aumentando en 1 el contador.
-
-Si el contador no es igual al primer elemento, se puede decir que entonces el contador es de hecho la posicion m donde se tiene que colocar
-la ficha dentro de una determinada fila n, ya que el contador crece de forma sincronica conforme se compara el primer elemento de la lista
-ordenada de posibles m's. En el momento en que se llegue a una discrepancia entre contador y primer elemento de la lista de presentes (que esta
-ordenada de menor a mayor, al ser rellenada de forma paulatina por el recorrido de la matriz) se retorna el valor de (posicion n de la ficha
-a analizar, contador).
-
-Es importante recalcar que la colocacion de fichas solo ocurre si la posicion dada por (fichaAnalizar, contador) esta dentro de la lista
-candidatos, por lo que antes de cada colocacion de fichas, se llama a la funcion revisarCandidatos para determinar si se coloca o no la ficha.
+Last function in the process of horizontal win check. Only reachable if the program previously determined that the quantity of tiles of the same player are one away from the needed to win (m dimension).
+If positions is null, means it reached the end of posible positions to analize inside the row, so it returns the position of the winning tile ( n position of tileToCheck, counter).
+If positions is not null, checks if counter is equal to the first element of the list, if it is, means that the missing m position is not the current one. Meaning the tile to win is not present in the current recursion, so it calls
+itseft again, shrinking the positions list and adding 1 to the counter.
+If counter is different from the first element, means that the counter is the m position where the tile has to be placed inside the row. If found a discrepancy between counter and the first element of positions, it returns the value
+of ( n position of tileToCheck, counter).
+Tile placement only occurs if the position given by (tileToCheck, counter) is inside the list of candidates, so it calls checkCandidates to see if it is valid to place the tile or not.
+Receives: positions (list of m positions that contains tiles), tileToCheck (the tile to be checked), counter (recursive auxiliar parameter), candidates (to check if the winning tile is inside this list)
 |#
-(define (determinarFichaParaGanarHorizontal presentes fichaAnalizar contador candidatos)
-  (if (null? presentes)
-      (if (revisarCandidatos candidatos (append (list (car fichaAnalizar)) (list contador)))
-          (append (list (car fichaAnalizar)) (list contador))
-          '()
-      )
-      (if (= contador (car presentes))
-          (determinarFichaParaGanarHorizontal (cdr presentes)
-                                              fichaAnalizar
-                                              (+ contador 1)
-                                              candidatos
-          )
-          (if (revisarCandidatos candidatos (append (list (car fichaAnalizar)) (list contador)))
-              (append (list (car fichaAnalizar)) (list contador))
-              '()
-          )
-      )
-  ) 
-)
+(define (determinateTileToWinHorizontaly positions tileToCheck counter candidates)
+  (if (null? positions)
+      (if (checkCandidates candidates (append (list (car tileToCheck)) (list counter)))
+          (append (list (car tileToCheck)) (list counter)) '())
+      (if (= counter (car positions))
+          (determinateTileToWinHorizontaly (cdr positions) tileToCheck (+ counter 1) candidates)
+          (if (checkCandidates candidates (append (list (car tileToCheck)) (list counter)))
+              (append (list (car tileToCheck)) (list counter))
+              '()))))
+;;---------------------------------------------------------- Vertical Win Check -------------------------------------------------------------------------------
 #|
-Funcion que tiene un comportamiento similar a la de revisarGaneHorizontal. Recibe como parametros las dos listas de fichas colocadas por el
-usuario o por la maquina, ademas de la cantidad necesaria de fichas colocadas en una misma columna m, llamada nParaGanar, y determinada por la
-dimension n de la matriz. La lista de candidatos cumple la misma funcion que en la definicion anterior. De igual manera que la validacion
-horizontal, son tres funciones las que componen esta parte del codigo.
-Primeramente, se recorre la lista de fichasMaquinaAuxiliar, y en cada iteracion, hasta que la misma este vacia (es decir, que sea nula), se
-trata de encontrar una nueva ficha para ganar por medio de la funcion fichaParaGanarVertical.
+Function that works the same as checkHorizontalWin, also made up by three different functions. First it traverse botTilesAux recursively until it becomes null, and keeps looking for a tile
+to win by calling tileToWinVerticaly.
+Receives: botTiles (list to check), botTilesAux (list to be reconstructed), nToWin (quantity of tiles needed placed on the same column), tileToWin (the tile currently being checked), candidates (list of candidate tiles)
 |#
-(define (revisarGaneVertical fichasMaquina fichasMaquinaAuxiliar nParaGanar fichaParaGanar candidatos)
-  (if (null? fichasMaquinaAuxiliar)
-      fichaParaGanar
-      (if (null? fichaParaGanar)
-          (revisarGaneVertical fichasMaquina
-                               (cdr fichasMaquinaAuxiliar)
-                               nParaGanar
-                               (fichaParaGanarVertical fichasMaquina (car fichasMaquinaAuxiliar) nParaGanar '() candidatos)
-                               candidatos
-          )
-          fichaParaGanar
-      )
-  )
-)
+(define (checkVerticalWin botTiles botTilesAux nToWin tileToWin candidates)
+  (if (null? botTilesAux)
+      tileToWin
+      (if (null? tileToWin)
+          (checkVerticalWin botTiles (cdr botTilesAux) nToWin (tileToWinVerticaly botTiles (car botTilesAux) nToWin '() candidates) candidates)
+          tileToWin)))
 #|
-Por cada ficha colocada por el usuario o por la maquina, se intenta encontrar una ficha que permita el gane por medio de esta funcion. Recibe
-como parametro a las fichas colocadas por el usuario o por la maquina, la ficha especifica a analizar en la iteracion actual, la dimension
-que debe tener la linea para ganar, dada por nParaGanar, una lista presentes que sirve de auxiliar dentro de la recursividad, y la lista de
-candidatos donde, de poder formar una linea, el sistema podria o no colocar una ficha.
-
-Esta funcion se recorre de manera recursiva hasta que la lista de fichas del jugador sea vacia, en este momento se valida si la cantidad
-de fichas presentes en una determinada columna m esta a una unidad de la cantidad necesaria, lo cual indicaria que solo falta una ficha
-para ganar en dicha columna m. De cumplirse lo anterior, se ejecuta la funcion determinarFichaParaGanarVertical, que encontrara la ficha
-que el jugador debe colocar para ganar.
-
-Si la lista de fichas del jugador no es vacia, se seguiran comparando sus valores m con el de la iteracion actual, con el fin de verificar
-cuantas fichas hay presentes dentro de una columna, y poder decidir si se puede determinar una ficha que permita el gane.
+Function that tries to find the tile that lets a win for every tile placed by the user or the bot. Traverses the botTiles list recursively until it is null, in this moment, it validates if the quantity of present tiles in a
+determined column is one away from the needed account to win. If this applies, it calls the function determinateTileToWinVerticaly, to find the tile that the player needs to place to win.
+If botTiles is not null, it will continue comparing m values with the one being checked in the current recursion, so it can check how many tiles  are present in the column, and so it can decide if there is a tile that can win the game.
+Receives: botTiles (list of placed tiles), tileToCheck (tile to analize), nToWin (quantity of tiles needed in that column to win), positions (recursive param with the position of the tiles placed on that column) and candidates (also posible
 |#
-(define (fichaParaGanarVertical fichasMaquina fichaAnalizar nParaGanar presentes candidatos)
-  (if (null? fichasMaquina)
-      (if (= (+ (length presentes) 1) nParaGanar)
-          (determinarFichaParaGanarVertical presentes fichaAnalizar 1 candidatos)
-          '()
-      )
-      (if (= (length fichasMaquina) 1)
-          (if (= (cadar fichasMaquina) (cadr fichaAnalizar))
-              (fichaParaGanarVertical (cdr fichasMaquina)
-                                       fichaAnalizar
-                                        nParaGanar
-                                        (append presentes (list (caar fichasMaquina)))
-                                        candidatos
-              )
-              (fichaParaGanarVertical (cdr fichasMaquina)
-                                        fichaAnalizar
-                                        nParaGanar
-                                        presentes
-                                        candidatos
-              )
-          )
-                                        
-          (if (= (cadar fichasMaquina) (cadr fichaAnalizar))
-              (fichaParaGanarVertical (cdr fichasMaquina)
-                                        fichaAnalizar
-                                        nParaGanar
-                                        (append presentes (list (caar fichasMaquina)))
-                                        candidatos
-              )
-              (fichaParaGanarVertical (cdr fichasMaquina)
-                                        fichaAnalizar 
-                                        nParaGanar
-                                        presentes
-                                        candidatos
-              )
-          )
-      )
-  )
-)
+(define (tileToWinVerticaly botTiles tileToCheck nToWin positions candidates)
+  (if (null? botTiles)
+      (if (= (+ (length positions) 1) nToWin)
+          (determinateTileToWinVerticaly positions tileToCheck 1 candidates)
+          '())
+      (if (= (length botTiles) 1)
+          (if (= (cadar botTiles) (cadr tileToCheck))
+              (determinateTileToWinVerticaly (cdr botTiles) tileToCheck nToWin (append positions (list (caar botTiles))) candidates)
+              (determinateTileToWinVerticaly (cdr botTiles) tileToCheck nToWin positions candidatos))                         
+          (if (= (cadar botTiles) (cadr tileToCheck))
+              (determinateTileToWinVerticaly (cdr botTiles) tileToCheck nToWin (append positions (list (caar botTiles))) candidates)
+              (determinateTileToWinVerticaly (cdr botTiles) tileToCheck nToWin positions candidatos)))))
 #|
-Funcion utilizada para determinar con cual ficha el usuario o la maquina pueden ganar con una linea vertical. Si el sistema ingresa aqui,
-significa que, o usuario o maquina, estan a una ficha de ganar en alguna de las columnas, pero no necesariamente pueden colocar una ficha
-en esa posicion. Para eso justamente es que funciona el parametro de candidatos, que contiene todas las posiciones vacias dentro de la matriz,
-y hace posible la colocacion de fichas si la posicion deseada esta contendida en dicha lista.
-
-El funcionamiento es el mismo que el de determinarFichaParaGanarHorizontal, variando solo la forma de retornar el resultado, refiriendose a
-una posicion (m n), debido a que la linea que se quiere formar es vertical.
+Function that determines the tile needed for the player or the bot to win vertically. If this function is called, means either the user or the bot are one position away from winning in one of the columns, checks if that tile to
+win is present in the candidates list, if it is the player can win with it. Works the same as determinateTileToWinHorizontaly
 |#
-(define (determinarFichaParaGanarVertical presentes fichaAnalizar contador candidatos)
-  (if (null? presentes)
-      (if (revisarCandidatos candidatos (append (list contador) (list (cadr fichaAnalizar))))
-          (append (list contador) (list (cadr fichaAnalizar)))
-          '()
-      )
-      (if (= contador (car presentes))
-          (determinarFichaParaGanarVertical (cdr presentes)
-                                              fichaAnalizar
-                                              (+ contador 1)
-                                              candidatos
-          )
-          (if (revisarCandidatos candidatos (append (list contador) (list (cadr fichaAnalizar))))
-              (append (list contador) (list (cadr fichaAnalizar)))
-              '()
-          )
-      )
-  ) 
-)
+(define (determinateTileToWinVerticaly positions tileToCheck counter candidates)
+  (if (null? positions)
+      (if (revisarCandidatos candidates (append (list counter) (list (cadr tileToCheck))))
+          (append (list counter) (list (cadr tileToCheck)))
+          '())
+      (if (= counter (car positions))
+          (determinateTileToWinVerticaly (cdr positions) tileToCheck (+ counter 1) candidates)
+          (if (checkCandidates candidates (append (list counter) (list (cadr tileToCheck))))
+              (append (list counter) (list (cadr tileToCheck))) '()))))
+
+;;---------------------------------------------------------- Diagonal Win Check -------------------------------------------------------------------------------
 #|
 Función que se encarga de retornar todas las diagonales válidas que podrían generar un gane dentro de la matriz de juego. Recibe como parámetro a la matriz.
 Se compone de cuatro subfunciones que encuentran las diagonales de tipo descendentes y ascendentes, en dos variantes denominadas “diagonales verticales” y “diagonales horizontales”.
 |#
-(define (diagonalesValidas matriz)
-  (append (diagonalesDescendentesVerticales (length (car matriz))
-                                            (length matriz)
-                                            1
-                                            (length matriz)
-                                            (length matriz)
-                                            '()
-                                            '()
-          )
-          (diagonalesDescendentesHorizontales (length (car matriz))
-                                              (length matriz)
-                                              2
-                                              1
-                                              2
-                                              '()
-                                              '()
-          )
-          (descartarDiagonales (diagonalesAscendentesVerticales (length (car matriz))
-                                                                (length matriz)
-                                                                (length (car matriz))
-                                                                (length matriz)
-                                                                (length matriz)
-                                                                '()
-                                                                '()
-                               )
-                               '()
-          )
-          (descartarDiagonales (diagonalesAscendentesHorizontales (length (car matriz))
-                                                                  (length matriz)
-                                                                  (- (length (car matriz)) 1)
-                                                                  1
-                                                                  (- (length (car matriz)) 1)
-                                                                  '()
-                                                                  '()
-                               )
-                               '()
-          )
-  )           
-)
+(define (validDiagonals matrix)
+  (append (topDownVerticalDiagonals (length (car matrix)) (length matrix) 1 (length matrix) (length matrix) '() '())
+          (topDownHorizontalDiagonals (length (car matrix)) (length matrix) 2 1 2 '() '())
+          (discardDiagonals  (upwardVerticalDiagonals (length (car matrix)) (length matrix) (length (car matrix)) (length matrix) (length matrix) '() '()) '())
+          (discardDiagonals  (upwardHorizontalDiagonals (length (car matrix)) (length matrix) (- (length (car matrix)) 1) 1 (- (length (car matrix)) 1) '() '()) '())))
 #|
 Función encargada de identificar las diagonales de tipo ascendente vertical que se encuentran dentro de la matriz.
 Recibe como parámetros a la cantidad de columnas mMax, la cantidad de filas nMax, un contador de la fila nActual, un contador de la fila donde comenzó
@@ -882,12 +487,12 @@ Se utilizar a la función encontrarFichaPorPosicion para determinar si en esa po
 De ser así retorna un 1 que es sumado a la cantidad de la función anterior.
 |# 
 (define (analizarPosicionDiagonal matriz usuario posicion)
-  (if (= (encontrarFichaPorPosicion matriz (car posicion) (cadr posicion) '()) usuario)
+  (if (= (findTile matriz (car posicion) (cadr posicion) '()) usuario)
       1
       0))
 #|
 Función utilizada para determinar cuál es la posición donde hace falta una ficha dentro del diagonal. Recibe como parámetros a la matriz y a la diagonal.
-Por cada elemento posición dentro de diagonal, se verifica si analizarPosicionVaciaDiagonal retorna un true. De ser así, quiere decir que la posición actual
+Por cada element posición dentro de diagonal, se verifica si analizarPosicionVaciaDiagonal retorna un true. De ser así, quiere decir que la posición actual
 dentro de la diagonal es vacía, por lo que se retorna dicha posición. De no ser así, se procede con la siguiente posición de la diagonal, hasta que la misma sea nula.
 |# 
 (define (determinarFichaGaneDiagonal matriz diagonal diagonalAuxiliar codigo)
@@ -1015,15 +620,15 @@ Si alguna de las posiciones de la tupla de la primera posicion de candidatos es 
 la funcion de manera recursiva, recortando la lista de candidatos, ya que la ficha no pretende ser colocada en dicha primera posicion de
 candidatos.
 |#
-(define (revisarCandidatos candidatos posicion)
+(define (checkCandidates candidatos posicion)
   (if (null? candidatos)
       #f
       (if (= (caar candidatos) (car posicion))
           (if (= (cadar candidatos) (cadr posicion))
               #t
-              (revisarCandidatos (cdr candidatos) posicion)
+              (checkCandidates (cdr candidatos) posicion)
           )
-          (revisarCandidatos (cdr candidatos) posicion)
+          (checkCandidates (cdr candidatos) posicion)
        )
   )
 )
@@ -1039,43 +644,43 @@ colocadas por el usuario. Recibe como parametro a la matriz de juego.
   (display "\n")
   (funcionDeViabilidad matriz
                       (encontrarConjuntoDeCandidatos matriz)
-                      (encontrarFichasColocadas matriz '() 0 1 1 '())
-                      (encontrarFichasColocadas matriz '() 0 1 2 '())
+                      (findPlacedTiles matriz '() 0 1 1 '())
+                      (findPlacedTiles matriz '() 0 1 2 '())
   )
 )
 #|
 Primera parte del algoritmo voraz. Este funcion se encarga de encontrar el conjunto de candidatos posibles que pueden contribuir a la solucion,
 es decir, las posiciones que pueden ser ocupadas por la nueva ficha a colocar por la maquina. Recibe como parametro a la matriz de juego, y
-llama a la funcion explicada anteriormente encontrarFichasColocadas, que retorna una lista con todas las posiciones con elemento 0 (vacias)
+llama a la funcion explicada anteriormente encontrarFichasColocadas, que retorna una lista con todas las posiciones con element 0 (vacias)
 dentro de la matriz.
 |#
 (define (encontrarConjuntoDeCandidatos matriz)
-  (encontrarFichasColocadas matriz '() 0 1 0 '())
+  (findPlacedTiles matriz '() 0 1 0 '())
 )
 
 #|
 Segunda parte del algoritmo voraz. Esta funcion se encarga de determinar la viabilidad del conjunto de candidatos. Recibe como parametros
 a la matriz, la lista de posibles candidatos, las fichas colocadas por el jugador, y las fichas colocadas por la maquina.
 |#
-(define (funcionDeViabilidad matriz candidatosParaColocar fichasJugador fichasMaquina)
+(define (funcionDeViabilidad matriz candidatosParaColocar fichasJugador botTiles)
   ;Maquina revisa si puede ganar de forma horizontal
-  (if (not (null? (revisarGaneHorizontal fichasMaquina fichasMaquina (length (car matriz)) '() candidatosParaColocar)))
-      (printPrueba(funcionSolucion (append (list (append (list (append (list (car (revisarGaneHorizontal fichasMaquina fichasMaquina (length (car matriz)) '() candidatosParaColocar)))
+  (if (not (null? (revisarGaneHorizontal botTiles botTiles (length (car matriz)) '() candidatosParaColocar)))
+      (printPrueba(funcionSolucion (append (list (append (list (append (list (car (revisarGaneHorizontal botTiles botTiles (length (car matriz)) '() candidatosParaColocar)))
                                                       (list 1)
                                   )
                             )
-                            (list (append (list (car (revisarGaneHorizontal fichasMaquina fichasMaquina (length (car matriz)) '() candidatosParaColocar)))
+                            (list (append (list (car (revisarGaneHorizontal botTiles botTiles (length (car matriz)) '() candidatosParaColocar)))
                                           (list (length (car matriz)))
                                   )
                             )      
                     )
               )
-              (list (append (list (car (revisarGaneHorizontal fichasMaquina fichasMaquina (length (car matriz)) '() candidatosParaColocar)))
-                            (list (cadr (revisarGaneHorizontal fichasMaquina fichasMaquina (length (car matriz)) '() candidatosParaColocar)))
+              (list (append (list (car (revisarGaneHorizontal botTiles botTiles (length (car matriz)) '() candidatosParaColocar)))
+                            (list (cadr (revisarGaneHorizontal botTiles botTiles (length (car matriz)) '() candidatosParaColocar)))
                     )                   
               )
-              (list (placePlayerSymbol (car (revisarGaneHorizontal fichasMaquina fichasMaquina (length (car matriz)) '() candidatosParaColocar))
-                                         (cadr (revisarGaneHorizontal fichasMaquina fichasMaquina (length (car matriz)) '() candidatosParaColocar))
+              (list (placePlayerSymbol (car (revisarGaneHorizontal botTiles botTiles (length (car matriz)) '() candidatosParaColocar))
+                                         (cadr (revisarGaneHorizontal botTiles botTiles (length (car matriz)) '() candidatosParaColocar))
                                          1
                                          (length matriz)
                                          matriz
@@ -1086,23 +691,23 @@ a la matriz, la lista de posibles candidatos, las fichas colocadas por el jugado
               )
       )))
       ;Maquina revisa si puede ganar de forma vertical
-      (if (not (null? (revisarGaneVertical fichasMaquina fichasMaquina (length matriz) '() candidatosParaColocar)))
+      (if (not (null? (revisarGaneVertical botTiles botTiles (length matriz) '() candidatosParaColocar)))
           (printPrueba(funcionSolucion(append (list (append (list (append (list 1)
-                                                          (list (cadr (revisarGaneVertical fichasMaquina fichasMaquina (length matriz) '() candidatosParaColocar)))
+                                                          (list (cadr (revisarGaneVertical botTiles botTiles (length matriz) '() candidatosParaColocar)))
                                       )
                                 )
                                 (list (append (list (length matriz))
-                                              (list (cadr (revisarGaneVertical fichasMaquina fichasMaquina (length matriz) '() candidatosParaColocar)))
+                                              (list (cadr (revisarGaneVertical botTiles botTiles (length matriz) '() candidatosParaColocar)))
                                       )    
                                 )
                         )
                   )
-                  (list (append (list (car (revisarGaneVertical fichasMaquina fichasMaquina (length matriz) '() candidatosParaColocar)))
-                                (list (cadr (revisarGaneVertical fichasMaquina fichasMaquina (length matriz) '() candidatosParaColocar)))
+                  (list (append (list (car (revisarGaneVertical botTiles botTiles (length matriz) '() candidatosParaColocar)))
+                                (list (cadr (revisarGaneVertical botTiles botTiles (length matriz) '() candidatosParaColocar)))
                         )
                   )
-                  (list (placePlayerSymbol (car (revisarGaneVertical fichasMaquina fichasMaquina (length matriz) '() candidatosParaColocar))
-                                             (cadr (revisarGaneVertical fichasMaquina fichasMaquina (length matriz) '() candidatosParaColocar))
+                  (list (placePlayerSymbol (car (revisarGaneVertical botTiles botTiles (length matriz) '() candidatosParaColocar))
+                                             (cadr (revisarGaneVertical botTiles botTiles (length matriz) '() candidatosParaColocar))
                                              1
                                              (length matriz)
                                              matriz
@@ -1115,7 +720,7 @@ a la matriz, la lista de posibles candidatos, las fichas colocadas por el jugado
           ;Maquina revisa si puede ganar de forma diagonal
           (if (not (null? (revisarGaneDiagonal matriz (diagonalesValidas matriz) '() 2 "Logica")))
               (printPrueba(funcionSolucion(append (list (append (list (car (revisarGaneDiagonal matriz (diagonalesValidas matriz) '() 2 "Interfaz")))
-                                    (list (ultimoElementoLista (revisarGaneDiagonal matriz (diagonalesValidas matriz) '() 2 "Interfaz")))
+                                    (list (ultimoelementLista (revisarGaneDiagonal matriz (diagonalesValidas matriz) '() 2 "Interfaz")))
                             )
                       )
                       (list (append (list (car (revisarGaneDiagonal matriz (diagonalesValidas matriz) '() 2 "Logica")))
@@ -1200,7 +805,7 @@ a la matriz, la lista de posibles candidatos, las fichas colocadas por el jugado
 
 
 (define (fullMatrix matriz)
-  (if (= (length (encontrarFichasColocadas matriz '() 0 1 0 '())) 0)
+  (if (= (length (findPlacedTiles matriz '() 0 1 0 '())) 0)
       #t
       #f
   )
