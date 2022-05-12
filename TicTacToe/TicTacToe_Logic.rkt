@@ -273,6 +273,7 @@ Receives: botTiles (list of placed tiles), tileToCheck (tile to analize), nToWin
 Function that determines the tile needed for the player or the bot to win vertically. If this function is called, means either the user or the bot are one position away from winning in one of the columns, checks if that tile to
 win is present in the candidates list, if it is the player can win with it. Works the same as determinateTileToWinHorizontaly
 |#
+
 (define (determinateTileToWinVerticaly positions tileToCheck counter candidates)
   (if (null? positions)
       (if (checkCandidates candidates (append (list counter) (list (cadr tileToCheck))))
@@ -285,8 +286,9 @@ win is present in the candidates list, if it is the player can win with it. Work
 
 ;;---------------------------------------------------------- Diagonal Win Check -------------------------------------------------------------------------------
 #|
-Función que se encarga de retornar todas las diagonals válidas que podrían generar un gane dentro de la matrix de juego. Recibe como parámetro a la matrix.
-Se compone de cuatro subfunciones que encuentran las diagonals de tipo descendentes y ascendentes, en dos variantes denominadas “diagonals verticales” y “diagonals horizontales”.
+Function that finds all the valid diagonals that could make a player win the game.
+Receives: the matrix of the board
+Returns: a list of all valid diagonals.
 |#
 (define (validDiagonals matrix)
   (append (topDownVerticalDiagonals (length (car matrix)) (length matrix) 1 (length matrix) (length matrix) '() '())
@@ -294,13 +296,13 @@ Se compone de cuatro subfunciones que encuentran las diagonals de tipo descenden
           (discardDiagonals  (upwardVerticalDiagonals (length (car matrix)) (length matrix) (length (car matrix)) (length matrix) (length matrix) '() '()) '())
           (discardDiagonals  (upwardHorizontalDiagonals (length (car matrix)) (length matrix) (- (length (car matrix)) 1) 1 (- (length (car matrix)) 1) '() '()) '())))
 #|
-Función encargada de identificar las diagonals de tipo ascendente vertical que se encuentran dentro de la matrix.
-Recibe como parámetros a la amountSpaces de columnas mMax, la amountSpaces de filas nMax, un contador de la fila nActual, un contador de la fila donde comenzó
-la diagonal actual start_n, la currentDiagonal que se va conformando de manera recursiva, y la lista de diagonals que este tipo que pueden ser formadas.
-Esta función va recorriendo, por cada start_n (que inicia en nMax y termina en 0) el diagonal que se puede formar hasta llegar a un punto donde no queden
-positiones que agregar al currentDiagonal. Lleva un recuento del nActual y mActual, y en el momento en que ambas superen a nMax y mMax respectivamente,
-se sabe que no quedan positiones en diagonal que agregar al currentDiagonal, por lo que se procede a repetir el proceso, pero reduciendo la fila donde
-empieza el diagonal start_n, con el fin de considerar todos los diagonals de tipo ascendente vertical.
+Function that identifies the upward vertical diagonals in wich the players can win
+Recieves: mMax: number of columns
+          nMax: number of lines
+          nActual: the actual line the algorithm is processing
+          start_n: the line where the diagonal started
+          currentDiagonal: diagonal generated recursively
+          diagonals: all formed diagonals      
 |#  
 (define (upwardVerticalDiagonals mMax nMax mActual nActual start_n currentDiagonal diagonals)
   (if (= start_n 0) diagonals
@@ -328,12 +330,13 @@ empieza el diagonal start_n, con el fin de considerar todos los diagonals de tip
                                                (append currentDiagonal (list (append (list nActual) (list mActual))))
                                                 diagonals)))))
 #|
-Función encargada de identificar las diagonals de tipo descendente vertical que se encuentran dentro de la matrix.
-Recibe como parámetros a la amountSpaces de columnas mMax, la amountSpaces de filas nMax, un contador que indica el mActual,
-un contador que indica el nActual, un contador start_m que indica la columna donde inició el diagonal actual, el
-currentDiagonal y la lista de diagonals de tipo descendentes verticales. De igual manera que la función anterior,
-va analizando cada diagonal hasta que se llega a que start_m es mayor a mMax, por lo que se dice que no quedan diagonals
-de tipo descendente vertical.
+Function that identifies the upward horizontal diagonals in wich the players can win
+Recieves: mMax: number of columns
+          nMax: number of lines
+          nActual: the actual line the algorithm is processing
+          start_m: the column where the current diagonal started
+          currentDiagonal: diagonal generated recursively
+          diagonals: all formed diagonals 
 |#  
 (define (upwardHorizontalDiagonals mMax nMax mActual nActual start_m currentDiagonal diagonals)
   (if (= start_m 0)
@@ -360,8 +363,16 @@ de tipo descendente vertical.
                                                  (+ nActual 1)
                                                  start_m
                                                  (append currentDiagonal (list (append (list nActual) (list mActual))))
-                                                 diagonals)))))
-                                                                                  
+                                                 diagonals)))))                                                                                 
+#|
+Function that identifies the downwards vertical diagonals in wich the players can win
+Recieves: mMax: number of columns
+          nMax: number of lines
+          nActual: the actual line the algorithm is processing
+          start_n: the line where the diagonal started
+          currentDiagonal: diagonal generated recursively
+          diagonals: all formed diagonals      
+|#  
 (define (topDownVerticalDiagonals mMax nMax mActual nActual start_n currentDiagonal diagonals)
   (if (= start_n 0)
       diagonals
@@ -400,7 +411,15 @@ de tipo descendente vertical.
                                                 start_n
                                                 currentDiagonal
                                                 diagonals )))))
-
+#|
+Function that identifies the downwards horizontal diagonals in wich the players can win
+Recieves: mMax: number of columns
+          nMax: number of lines
+          nActual: the actual line the algorithm is processing
+          start_m: the column where the current diagonal started
+          currentDiagonal: diagonal generated recursively
+          diagonals: all formed diagonals 
+|#  
 (define (topDownHorizontalDiagonals mMax nMax mActual nActual start_m currentDiagonal diagonals)
   (if (> start_m mMax)
       diagonals
@@ -443,10 +462,9 @@ de tipo descendente vertical.
                                                   start_m
                                                   (append currentDiagonal (list (append (list nActual) (list mActual))))
                                                   diagonals)))))
+
 #|
-Función que recibe como parámetros una lista de diagonals y una lista vacía de validDiagonals, y por medio de
-llamadas recursivas y comparaciones de cada diagonal, se determina cuales tienen una longitud mayor o igual a tres,
-por lo que pueden ser consideradas validDiagonals. Al analizar cada diagonal de diagonals, retorna la lista de validDiagonals.
+  Function that determines wich diagonals are valid for the win.
 |# 
 (define (discardDiagonals diagonal_list validDiagonals)
   (if (null? diagonal_list)
@@ -454,13 +472,16 @@ por lo que pueden ser consideradas validDiagonals. Al analizar cada diagonal de 
       (if (>= (length (car diagonal_list)) 3)
           (discardDiagonals (cdr diagonal_list) (append validDiagonals (list (car diagonal_list))))
           (discardDiagonals (cdr diagonal_list) validDiagonals))))
-#|
-Función encargada de analizar si existe una posición en la cual, en caso de colocar una ficha, se produzca un gane para el jugador.
-Recibe como parámetros a la matrix, una lista de diagonals válidos, la posible flag_win (que por defecto es nula), el player
-(jugador o maquina) que quiere revisar si existe una posición para ganar y un código de tipo string que se utiliza más adelante
-para saber si la información requerida es para la parte lógica o la parte de interfaz. De igual manera que con checkHorizontalWin
-y revisarGaneVertical, se llama esta función de forma recursiva hasta que checkDiagonal retorne una posición que no sea nula,
-o se acaben los possibles diagonals.
+
+#|  
+  Function that checks if there is any position in which any player can win. Calls check diagonal
+
+  Receives: matrix: game matrix
+            diagonals_list: list of all diagonals
+            flag_win: true if the diagonal is a win.
+            player: determines if is the player or the machine
+            code: inner part of the program, used for GUI methods.
+  Returns: a list of valid diagonals where a player can win.
 |# 
 (define (checkDiagonalWin matrix diagonals_list flag_win player code)
   (if (null? diagonals_list)
@@ -472,15 +493,17 @@ o se acaben los possibles diagonals.
                                player
                                code)
           flag_win)))
+
+
 #|
-Función encargada de analizar cada diagonal para determinar si existe un posible gane dentro de la misma. Recibe como parámetros a la matrix,
-al player que quiere verificar si puede ganar, el diagonal a analizar, una copia de la diagonal a analizar auxDiagonal, la amountSpaces de
-fichas que hay en el diagonal, y el mismo código de la función anterior. Por cada posición dentro del diagonal, y en caso de que la función
-checkDiagonalPos retorne un true, se suma un 1 a la amountSpaces, por lo que, al terminarse las positiones de diagonal, y si la amountSpaces
-está a una unidad de la longitud de auxDiagonal, se retorna el auxDiagonal o la posición para ganar proveniente de
-determinarFichaParaGanarDiagonal, en función de si el código es “Interfaz” o “Lógica”. El motivo por el cual se utiliza el código es porque,
-para la interfaz se tienen que enviar solo la posición inicial y final de la diagonal (con el fin de dibujar la línea del gane), y para la lógica
-se tiene que retornar únicamente la posición que permita el gane.
+  Function that checks each diagonal to see if there is a possible win in a diagonal of tiles.
+
+  Receives: matrix: matrix game
+            player: user or machine
+            diagonal: the diagonal to check
+            auxDiagonal: copie of diagonal, for the recurion
+            amountSpaces: amount of tiles in the diagonal
+            code: inner part of the program, for GUI methods.
 |# 
 (define (checkDiagonal matrix player diagonal auxDiagonal amountSpaces code)
   (if (null? diagonal)
@@ -494,18 +517,23 @@ se tiene que retornar únicamente la posición que permita el gane.
                         (+ amountSpaces (checkDiagonalPos matrix player (car diagonal)))
                         code)))
 #|
-Función que recibe como parámetros a la matrix, el player que se busca y la posición en la que se busca dentro de la matrix.
-Se utilizar a la función encontrarFichaPorposition para determinar si en esa posición específica existe una ficha de valor player (1 o 2).
-De ser así retorna un 1 que es sumado a la amountSpaces de la función anterior.
+
+  Function that checks if there is a player in the tile.
+  Recieves: matrix
+            player: user or machine
+            position: position of the tile to check
+  Returns: 1 if theres a player on the tile, 0 if not.
 |# 
 (define (checkDiagonalPos matrix player position)
   (if (= (findTile matrix (car position) (cadr position) '()) player)
       1
       0))
 #|
-Función utilizada para determinar cuál es la posición donde hace falta una ficha dentro del diagonal. Recibe como parámetros a la matrix y a la diagonal.
-Por cada element posición dentro de diagonal, se verifica si analizeEmptyDiagonalPos retorna un true. De ser así, quiere decir que la posición actual
-dentro de la diagonal es vacía, por lo que se retorna dicha posición. De no ser así, se procede con la siguiente posición de la diagonal, hasta que la misma sea nula.
+  Function that determines in which positions of a diagonal a win can be generated by placing a player.
+  Receives: matrix
+            diagonal
+            auxDiagonal
+            code
 |# 
 (define (findWinTileDiagonal matrix diagonal auxDiagonal code)
   (if (null? diagonal)
@@ -515,16 +543,22 @@ dentro de la diagonal es vacía, por lo que se retorna dicha posición. De no se
               auxDiagonal
               (car diagonal))
           (findWinTileDiagonal matrix (cdr diagonal) auxDiagonal code))))
+#|
+  Function that determines if a tile has or not a player
+|#
 (define (analizeEmptyDiagonalPos matrix position)
   (if (= (findTile matrix (car position) (cadr position) '()) 0)
       #t
       #f))
+
 #|
-Función encargada de que la máquina conforme sus líneas, en caso no poder ganar o no tener que colocar fichas para no perder.
-Recibe como parámetros las player_tiles, el player que va a conformar la línea, una lista de possibles positiones para conformar que se va rellenando recursivamente,
-y una lista de candidates que contiene todas las positiones vacías dentro de la matrix. Por cada ficha del player, esta función agrega nuevas possibles positiones
-por medio de la función actualizarpositionesConformar, y al ser la lista de player_tiles vacía, se llama a la función seleccionarpositionesConformar,
-que determinará en cual de las possibles positiones hay que conformar la línea.
+  Function that allows the AI to generete its lines.
+  Receives: matrix
+            player_tiles: a list of tiles
+            player
+            possibles: posible positions, filled recursively
+            candidates: all empty positions inside the matrix
+
 |# 
 (define (formLines matrix player_tiles player possibles candidates)
   (if (null? player_tiles)
@@ -535,16 +569,16 @@ que determinará en cual de las possibles positiones hay que conformar la línea
                        (formLines_aux possibles (caar player_tiles) (cadar player_tiles) 
                                                     (length (car matrix)) (length matrix) candidates #t #t #t #t)
                        candidates)))
+
 #|
-Función encargada de determinar en cuales possibles positiones podría la máquina continuar conformando sus líneas. Recibe como parámetro una
-lista de possibles soluciones que cada vez se va llenando, un valor m_toForm que indica la posición m de la ficha que está siendo analizada,
-un valor n_toForm que indica la posición n de la ficha que está siendo analizada, un valor mMax para verificar si la posible posición excede
-el máximo de columnas, un valor nMax para verificar si la posible posición excede el máximo de filas, y las cuatro coordenadas cartesianas N E S O
-como banderas que cambiarán de true a false si ya se han revisado las positiones adyacentes en dichas coordenadas. Esta función se llama a si misma
-en el orden N E S O, cambiando en cada iteración los valores de estas banderas a false (para no repetir validaciones), con el fin de revisar cada
-“vecino” de las fichas que previamente se han colocado. Para ser tomado en cuenta como un “vecino” válido, y ser colocado dentro de possibles,
-se debe cumplir que la posición de dicho “vecino” no exceda a mMax o nMax, además de que su posición m y n debe ser mayor que 0. Una vez que se
-evaluan las cuatro coordenadas up right down left, se retorna la lista de possibles.
+  Funtion that determines in which positions the AI could continue forming its lines.
+  Receives: possibles: list of possible lines, fill recurively
+            m_toForm: position m of the tile being analized
+            n_toForm: position n of the tile being analized
+            mMax: amount of columns
+            nMax: amount of lines
+            candidates: all empty tiles in the matrix
+            up, right, down left: flags to keep track of directions checked.
 |# 
 (define (formLines_aux possibles m_toForm n_toForm mMax nMax candidates up right down left)
   (if (equal? up #t)
@@ -568,13 +602,13 @@ evaluan las cuatro coordenadas up right down left, se retorna la lista de possib
                                                    m_toForm n_toForm mMax nMax candidates up right down #f)
                       (formLines_aux possibles m_toForm n_toForm mMax nMax candidates up right down #f))
                   possibles )))))
+
 (define (selectPositon_form matrix possibles position actualCandidate candidates)
   (if (> position 1)
       (selectPositon_form matrix possibles (- position 1) (car candidates) (cdr candidates))
       actualCandidate ))
 #|
-Función encargada de colocar la ficha correspondiente al caso de conformar línea. Recibe como parámetros a la matrix y a l
-a posición de la tileToPlace. Se encarga de formar el message para la interfaz con la forma indicada en el código a continuación.
+  Function that places a player in a tile in case of forming a line.
 |# 
 (define (placeTilesFormLines matrix tileToPlace)
   (printCheck(append (list '())
@@ -588,19 +622,11 @@ a posición de la tileToPlace. Se encarga de formar el message para la interfaz 
                                      matrix
                                      '()
                                      2 )))))
+
 #|
-Funcion utilizada para revisar la lista de candidates y determinar si una position es valida para colocar una ficha en la matrix. Recibe como
-parametros a la lista de candidates y a la position donde se quiere colocar la ficha.
-En caso de que la lista de candidates sea nula, quiere decir que no se encontro antes a la position dentro de la lista de candidates, por lo
-que se define como nula la colocacion de dicha fila, y se retorna un false.
-
-En caso de que la lista de candidates no sea vacia, se comparan las positiones de la tupla de la primera position de candidates con las
-positiones de la tupla position, y si ambas coinciden, se dice que la ficha va a ser colocada en un candidato correcto, que corresponde a un
-espacio vacio dentro de la matrix.
-
-Si alguna de las positiones de la tupla de la primera position de candidates es diferente que las positiones de la tupla position, se retorna
-la funcion de manera recursiva, recortando la lista de candidates, ya que la ficha no pretende ser colocada en dicha primera position de
-candidates.
+  Function used to check the candidates list and determine if a position is valid to place a player's tile in the matrix.
+  Receives: candidates: list of posible tiles
+            position: position (m n) of the tile
 |#
 (define (checkCandidates candidates position)
   (if (null? candidates)
@@ -611,11 +637,9 @@ candidates.
               (checkCandidates (cdr candidates) position)
           )
           (checkCandidates (cdr candidates) position) )))
-;----------------------------------------------------------ALGORITMO VORAZ---------------------------------------------------------------------
+;----------------------------------------------------------greedy Algorithm---------------------------------------------------------------------
 #|
-Funcion que inicia la ejecucion del algoritmo voraz. Es llamada cada vez que la maquina tiene que colocar una ficha, y por medio de las
-diversas subfunciones, se determina cual seria la position idonea para colocar la ficha, en funcion de las fichas propias de la maquina, y las
-colocadas por el player. Recibe como parametro a la matrix de juego.
+  Function that executes the greedy Algorithm. Its called in every turn of the AI.
 |#
 (define (runGreedyAlgorithm matrix)
   (display "Ejecutando el algoritmo voraz \n")
@@ -626,18 +650,19 @@ colocadas por el player. Recibe como parametro a la matrix de juego.
                       (findPlacedTiles matrix '() 0 1 1 '())
                       (findPlacedTiles matrix '() 0 1 2 '())))
 #|
-Primera parte del algoritmo voraz. Este funcion se encarga de encontrar el conjunto de candidates possibles que pueden contribuir a la solucion,
-es decir, las positiones que pueden ser ocupadas por la nueva ficha a colocar por la maquina. Recibe como parametro a la matrix de juego, y
-llama a la funcion explicada anteriormente encontrarFichasColocadas, que retorna una lista con todas las positiones con element 0 (vacias)
-dentro de la matrix.
+  First part of the greed algorithm. Finds the possible candidates of the solution.
+  Receives: matrix
 |#
 (define (findCandidates matrix)
   (findPlacedTiles matrix '() 0 1 0 '())
 )
 
 #|
-Segunda parte del algoritmo voraz. Esta funcion se encarga de determinar la viabilidad del conjunto de candidates. Recibe como parametros
-a la matrix, la lista de possibles candidates, las fichas colocadas por el jugador, y las fichas colocadas por la maquina.
+  Second part of the algorithm. Determines the viability of all the candidates.
+  Receives: matrix
+            candidatesToPlace: all possible candidates
+            player_tiles: all tiles placed by the player.
+            botTiles: all the tiles placed by the AI
 |#
 (define (viabilityFunction matrix candidatesToPlace player_tiles botTiles)
   ;Maquina revisa si puede ganar de forma horizontal
